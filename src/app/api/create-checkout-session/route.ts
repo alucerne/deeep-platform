@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2022-11-15' })
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2025-06-30.basil' })
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,8 +29,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
     }
 
-    // Calculate price: $5 per 1000 credits
-    const price = (credits / 1000) * 5
+    // Calculate price: $0.0005 per credit
+    const price = credits * 0.0005
 
     // Create Stripe Checkout session
     const session = await stripe.checkout.sessions.create({
