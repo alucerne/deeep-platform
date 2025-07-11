@@ -1,7 +1,7 @@
 import DashboardSidebar from "@/components/dashboard/sidebar"
 import Header from "@/components/dashboard/header"
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function GenerateLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen">
       <DashboardSidebar />
