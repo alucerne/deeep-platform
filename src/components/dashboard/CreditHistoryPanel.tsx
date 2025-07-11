@@ -1,73 +1,45 @@
-import { useEffect, useState } from 'react'
+'use client'
 
-interface CreditHistoryItem {
-  id: string
-  created: number
-  amount_total: number
-  currency: string
-  metadata: {
-    api_key: string
-    credits: string
-  }
-}
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+
+const mockHistory = [
+  { date: '2025-07-10', type: 'Purchase', credits: 1000000, method: 'Stripe' },
+  { date: '2025-07-08', type: 'Admin Credit', credits: 2000, method: 'Manual' },
+  { date: '2025-07-05', type: 'Purchase', credits: 500000, method: 'Stripe' },
+]
 
 export default function CreditHistoryPanel() {
-  const [history, setHistory] = useState<CreditHistoryItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const res = await fetch('/api/credit-history')
-        const data = await res.json()
-        if (res.ok) {
-          setHistory(data.history)
-        } else {
-          setError(data.error || 'Failed to fetch credit history')
-        }
-      } catch (err) {
-        setError('Network error occurred')
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchHistory()
-  }, [])
-
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Credit History</h2>
-      {loading ? (
-        <div className="text-gray-500">Loading...</div>
-      ) : error ? (
-        <div className="text-red-500">{error}</div>
-      ) : history.length === 0 ? (
-        <div className="text-gray-500">No credit top-ups found.</div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="text-left border-b">
-                <th className="py-2 pr-4">Date</th>
-                <th className="py-2 pr-4">Credits</th>
-                <th className="py-2 pr-4">Amount</th>
-                <th className="py-2 pr-4">API Key</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((item) => (
-                <tr key={item.id} className="border-b last:border-0">
-                  <td className="py-2 pr-4">{new Date(item.created * 1000).toLocaleString()}</td>
-                  <td className="py-2 pr-4">{parseInt(item.metadata.credits).toLocaleString()}</td>
-                  <td className="py-2 pr-4">${(item.amount_total / 100).toFixed(2)} {item.currency.toUpperCase()}</td>
-                  <td className="py-2 pr-4 font-mono text-xs">{item.metadata.api_key?.substring(0, 8)}...</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+    <div className="bg-white p-6 rounded-xl shadow border space-y-4">
+      <h2 className="text-lg font-semibold">Credit History</h2>
+
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Date</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Credits</TableHead>
+            <TableHead>Method</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {mockHistory.map((item, idx) => (
+            <TableRow key={idx}>
+              <TableCell>{item.date}</TableCell>
+              <TableCell>{item.type}</TableCell>
+              <TableCell>{item.credits.toLocaleString()}</TableCell>
+              <TableCell>{item.method}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   )
 } 
