@@ -5,6 +5,12 @@ import { createClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
 
 export async function POST(req: NextRequest) {
+  // Validate environment variables
+  if (!process.env.DEEEP_BEARER_TOKEN) {
+    console.error('DEEEP_BEARER_TOKEN environment variable is not set')
+    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+  }
+
   // Create Supabase client with user's authorization header
   const supabase = createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -39,11 +45,23 @@ export async function POST(req: NextRequest) {
 
     if (!deeepRes.ok) {
       const errorText = await deeepRes.text()
+      console.error('DEEEP API error:', deeepRes.status, errorText)
       return NextResponse.json({ error: `DEEEP API error: ${errorText}` }, { status: 500 })
     }
 
     const deeepData = await deeepRes.json()
-    const { api_key, customer_link } = deeepData
+    console.log('DEEEP API response:', deeepData)
+    
+    // Extract api_key and customer_link from response
+    const api_key = deeepData.api_key || deeepData.apiKey || deeepData.key
+    const customer_link = deeepData.customer_link || deeepData.customerLink || deeepData.link
+    
+    if (!api_key) {
+      console.error('No api_key found in DEEEP response:', deeepData)
+      return NextResponse.json({ 
+        error: 'DEEEP API did not return an API key. Response: ' + JSON.stringify(deeepData) 
+      }, { status: 500 })
+    }
 
     // Get the currently logged-in user
     const {
