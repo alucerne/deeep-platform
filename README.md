@@ -1,36 +1,122 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DEEEP Platform
+
+A modern, full-stack Next.js application with TypeScript, Tailwind CSS, and Supabase authentication.
+
+## Features
+
+- ⚡ **Next.js 15** with App Router
+- 🔒 **Supabase Authentication** (email + password)
+- 🎨 **Tailwind CSS** for beautiful, responsive design
+- 📱 **TypeScript** for type safety
+- 🚀 **Vercel Ready** for easy deployment
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+ 
+- npm or yarn
+- Supabase account
+
+### 1. Clone and Install
+
+```bash
+git clone <your-repo-url>
+cd deeep-platform
+npm install
+```
+
+### 2. Set up Supabase
+
+1. Create a new project at [supabase.com](https://supabase.com)
+2. Go to Settings > API
+3. Copy your Project URL and anon/public key
+
+### 3. Environment Variables
+
+Create a `.env.local` file in the root directory:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### 4. Run the Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+├── app/
+│   ├── dashboard/     # Protected dashboard page
+│   ├── login/         # Login page
+│   ├── signup/        # Signup page
+│   └── page.tsx       # Landing page
+├── lib/
+│   ├── auth.ts        # Authentication utilities
+│   └── supabase.ts    # Supabase client configuration
+```
 
-## Learn More
+## Pages
 
-To learn more about Next.js, take a look at the following resources:
+- **Home** (`/`) - Landing page with links to login/signup
+- **Login** (`/login`) - User authentication
+- **Signup** (`/signup`) - User registration
+- **Dashboard** (`/dashboard`) - Protected user dashboard
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Authentication Flow
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Users can sign up with email and password
+2. Email verification is handled by Supabase
+3. Users can log in with their credentials
+4. Authenticated users are redirected to the dashboard
+5. Users can log out from the dashboard
 
-## Deploy on Vercel
+## Deployment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Vercel (Recommended)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Push your code to GitHub
+2. Connect your repository to Vercel
+3. Add your environment variables in Vercel dashboard
+4. Deploy!
+
+### Environment Variables for Production
+
+Make sure to set these in your deployment platform:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+## Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+
+## Tech Stack
+
+- **Framework**: Next.js 15 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Authentication**: Supabase Auth
+- **Database**: Supabase (PostgreSQL)
+- **Deployment**: Vercel (recommended)
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## License
+
+MIT License - see LICENSE file for details
