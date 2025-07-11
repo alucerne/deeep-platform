@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { User } from '@supabase/supabase-js'
+import { DeeepApiKey } from '@/lib/database'
+import GenerateApiKeyForm from '@/components/GenerateApiKeyForm'
 
 // Dynamic imports to prevent SSR issues
 const getAuthFunctions = async () => {
@@ -10,8 +12,14 @@ const getAuthFunctions = async () => {
   return { getCurrentUser, signOut }
 }
 
+const getDatabaseFunctions = async () => {
+  const { getLatestDeeepApiKey } = await import('@/lib/database')
+  return { getLatestDeeepApiKey }
+}
+
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
+  const [deeepApiKey, setDeeepApiKey] = useState<DeeepApiKey | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
@@ -19,12 +27,19 @@ export default function DashboardPage() {
     const checkUser = async () => {
       try {
         const { getCurrentUser } = await getAuthFunctions()
+        const { getLatestDeeepApiKey } = await getDatabaseFunctions()
+        
         const currentUser = await getCurrentUser()
         if (!currentUser) {
           router.push('/login')
           return
         }
+        
         setUser(currentUser)
+        
+        // Get latest DEEEP API key
+        const apiKey = await getLatestDeeepApiKey(currentUser.id)
+        setDeeepApiKey(apiKey)
       } catch {
         router.push('/login')
       } finally {
@@ -85,6 +100,11 @@ export default function DashboardPage() {
                 You are successfully logged in with email: {user?.email}
               </p>
               
+              <div className="mb-8">
+                <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
+                <GenerateApiKeyForm />
+              </div>
+              
               <div className="bg-white shadow rounded-lg p-6 max-w-md mx-auto">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">
                   Account Information
@@ -112,6 +132,45 @@ export default function DashboardPage() {
                   </div>
                 </dl>
               </div>
+
+              {deeepApiKey && (
+                <div className="bg-white shadow rounded-lg p-6 max-w-md mx-auto mt-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">
+                    DEEEP API Information
+                  </h3>
+                  <dl className="space-y-3">
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">API Key</dt>
+                      <dd className="text-sm text-gray-900 font-mono break-all">
+                        {deeepApiKey.api_key}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Customer Link</dt>
+                      <dd className="text-sm text-gray-900">
+                        {deeepApiKey.customer_link ? (
+                          <a 
+                            href={deeepApiKey.customer_link} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-indigo-600 hover:text-indigo-500 underline"
+                          >
+                            {deeepApiKey.customer_link}
+                          </a>
+                        ) : (
+                          'Not available'
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">API Key Created</dt>
+                      <dd className="text-sm text-gray-900">
+                        {deeepApiKey.created_at ? new Date(deeepApiKey.created_at).toLocaleDateString() : 'N/A'}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              )}
             </div>
           </div>
         </div>
