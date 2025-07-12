@@ -92,7 +92,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, apiKey: data }, { status: 200 })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 })
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Internal server error'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }

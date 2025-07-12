@@ -60,10 +60,11 @@ export async function POST(req: NextRequest) {
       url: session.url 
     }, { status: 200 })
 
-  } catch (err: any) {
-    console.error('API error:', err)
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Internal server error'
+    console.error('API error:', errorMessage)
     return NextResponse.json({ 
-      error: err.message || 'Internal server error' 
+      error: errorMessage
     }, { status: 500 })
   }
 } 

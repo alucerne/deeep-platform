@@ -33,9 +33,10 @@ export async function POST(req: NextRequest) {
       process.env.STRIPE_WEBHOOK_SECRET!
     )
     console.log('✅ Webhook signature verified, event type:', event.type)
-  } catch (err: any) {
-    console.error('❌ Webhook signature verification failed:', err.message)
-    return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 })
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+    console.error('❌ Webhook signature verification failed:', errorMessage)
+    return NextResponse.json({ error: `Webhook Error: ${errorMessage}` }, { status: 400 })
   }
 
   if (event.type === 'checkout.session.completed') {
@@ -91,8 +92,9 @@ export async function POST(req: NextRequest) {
       const responseText = await deeepRes.text()
       console.log('✅ Credits added successfully to DEEEP:', responseText)
       
-    } catch (error) {
-      console.error('Error adding credits to DEEEP:', error)
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      console.error('Error adding credits to DEEEP:', errorMessage)
       return NextResponse.json({ 
         error: 'Failed to add credits to DEEEP' 
       }, { status: 500 })

@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
         // Extract credits from DEEEP response - check api_keys array first
         let credits = 0
         if (deeepData.api_keys && Array.isArray(deeepData.api_keys)) {
-          const matchingApiKey = deeepData.api_keys.find((key: any) => key.api_key === apiKey.api_key)
+          const matchingApiKey = deeepData.api_keys.find((key: { api_key: string; credits?: number }) => key.api_key === apiKey.api_key)
           if (matchingApiKey && matchingApiKey.credits) {
             credits = parseInt(matchingApiKey.credits) || 0
           }
@@ -128,10 +128,11 @@ export async function GET(req: NextRequest) {
       credits: creditResults 
     }, { status: 200 })
 
-  } catch (err: any) {
-    console.error('API error:', err)
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Internal server error'
+    console.error('API error:', errorMessage)
     return NextResponse.json({ 
-      error: err.message || 'Internal server error' 
+      error: errorMessage
     }, { status: 500 })
   }
 } 

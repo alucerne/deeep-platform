@@ -10,7 +10,8 @@ export async function GET() {
       (s) => s.payment_status === 'paid' && s.metadata?.credits && s.metadata?.api_key
     )
     return NextResponse.json({ payments }, { status: 200 })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 })
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Internal server error'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 } 
