@@ -42,7 +42,7 @@ export default function ApiKeysList() {
   }, [])
 
   // Fetch credits function
-  const fetchCreditsInfo = async () => {
+  const fetchCreditsInfo = useCallback(async () => {
     try {
       if (!supabase) {
         setLoadingCreditsInfo(false)
@@ -74,12 +74,17 @@ export default function ApiKeysList() {
     } finally {
       setLoadingCreditsInfo(false)
     }
-  }, [supabase.auth])
+  }, [supabase])
 
   // Fetch existing API keys on component mount
   useEffect(() => {
     const fetchApiKeys = async () => {
       try {
+        if (!supabase) {
+          setLoadingKeys(false)
+          return
+        }
+        
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError || !session) {
