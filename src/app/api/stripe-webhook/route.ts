@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
-// Set this to your secret key
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-06-30.basil',
-})
-
 // Disables automatic body parsing
 export const config = {
   api: {
@@ -15,6 +10,17 @@ export const config = {
 
 export async function POST(req: NextRequest) {
   console.log('🔔 Webhook received:', req.method, req.url)
+  
+  // Validate environment variable
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.error('STRIPE_SECRET_KEY environment variable is not set')
+    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+  }
+
+  // Initialize Stripe client inside the function
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2025-06-30.basil',
+  })
   
   const rawBody = await req.arrayBuffer()
   const body = Buffer.from(rawBody)

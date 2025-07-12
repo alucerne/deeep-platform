@@ -3,8 +3,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2025-06-30.basil' })
-
 export async function POST(req: NextRequest) {
   try {
     const { credits, api_key } = await req.json()
@@ -28,6 +26,9 @@ export async function POST(req: NextRequest) {
       console.error('NEXT_PUBLIC_SITE_URL environment variable is not set')
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
     }
+
+    // Initialize Stripe client inside the function
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2025-06-30.basil' })
 
     // Calculate price: $0.0005 per credit
     const price = credits * 0.0005
