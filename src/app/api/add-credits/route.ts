@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Try to parse as JSON, fallback to text if not JSON
-    let responseData
+    let responseData: unknown
     try {
       responseData = JSON.parse(responseText)
     } catch {

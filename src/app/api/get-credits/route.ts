@@ -5,7 +5,6 @@ import { createClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
 
 
-
 export async function GET(req: NextRequest) {
   // Validate environment variable
   if (!process.env.DEEEP_BEARER_TOKEN) {
@@ -98,7 +97,7 @@ export async function GET(req: NextRequest) {
         
         // Fallback to direct field access if api_keys structure not found
         if (credits === 0) {
-          credits = (deeepData as any).credits || (deeepData as any).Credits || (deeepData as any).credit || (deeepData as any).credit_balance || (deeepData as any).balance || 0
+          credits = (deeepData as unknown as { credits?: number, Credits?: number, credit?: number, credit_balance?: number, balance?: number }).credits || (deeepData as unknown as { Credits?: number }).Credits || (deeepData as unknown as { credit?: number }).credit || (deeepData as unknown as { credit_balance?: number }).credit_balance || (deeepData as unknown as { balance?: number }).balance || 0
         }
 
         return {

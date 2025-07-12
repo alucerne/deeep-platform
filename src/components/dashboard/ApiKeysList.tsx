@@ -62,7 +62,7 @@ export default function ApiKeysList() {
     } finally {
       setLoadingCreditsInfo(false)
     }
-  }, [])
+  }, [supabase.auth])
 
   // Fetch existing API keys on component mount
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function ApiKeysList() {
   // Fetch credits on component mount
   useEffect(() => {
     fetchCredits()
-  }, [])
+  }, [fetchCredits])
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
