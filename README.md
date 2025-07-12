@@ -120,3 +120,4 @@ Make sure to set these in your deployment platform:
 ## License
 
 MIT License - see LICENSE file for details
+# Force Vercel to use latest commit
