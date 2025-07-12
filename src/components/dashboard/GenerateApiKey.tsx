@@ -27,10 +27,17 @@ export default function GenerateApiKey({ onApiKeyGenerated }: GenerateApiKeyProp
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ApiKeyResponse | null>(null)
 
-  const supabase = useMemo(() => createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  ), [])
+  const supabase = useMemo(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn('Supabase environment variables not found')
+      return null
+    }
+    
+    return createClient<Database>(supabaseUrl, supabaseAnonKey)
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -45,6 +52,11 @@ export default function GenerateApiKey({ onApiKeyGenerated }: GenerateApiKeyProp
 
     try {
       // Get current session
+      if (!supabase) {
+        setResult({ success: false, error: 'Supabase client not initialized' })
+        return
+      }
+      
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       
       if (sessionError || !session) {

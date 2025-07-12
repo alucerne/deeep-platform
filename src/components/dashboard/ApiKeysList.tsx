@@ -29,14 +29,26 @@ export default function ApiKeysList() {
   const [creditsList, setCreditsList] = useState<CreditInfo[]>([])
   const [loadingCreditsInfo, setLoadingCreditsInfo] = useState(true)
 
-  const supabase = useMemo(() => createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  ), [])
+  const supabase = useMemo(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn('Supabase environment variables not found')
+      return null
+    }
+    
+    return createClient<Database>(supabaseUrl, supabaseAnonKey)
+  }, [])
 
   // Fetch credits function
-  const fetchCredits = useCallback(async () => {
+  const fetchCreditsInfo = async () => {
     try {
+      if (!supabase) {
+        setLoadingCreditsInfo(false)
+        return
+      }
+      
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       
       if (sessionError || !session) {
@@ -100,8 +112,8 @@ export default function ApiKeysList() {
 
   // Fetch credits on component mount
   useEffect(() => {
-    fetchCredits()
-  }, [fetchCredits])
+    fetchCreditsInfo()
+  }, [fetchCreditsInfo])
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)

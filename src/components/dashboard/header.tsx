@@ -8,13 +8,19 @@ import { LogOut } from 'lucide-react'
 
 export default function Header() {
   const router = useRouter()
-  const supabase = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
+  
   const handleLogout = async () => {
     try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      
+      if (!supabaseUrl || !supabaseAnonKey) {
+        console.warn('Supabase environment variables not found')
+        router.push('/login')
+        return
+      }
+      
+      const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
       const { error } = await supabase.auth.signOut()
       if (error) {
         console.error('Error logging out:', error)

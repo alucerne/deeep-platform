@@ -25,14 +25,26 @@ export default function ChartAreaInteractive() {
   const [creditsList, setCreditsList] = useState<CreditInfo[]>([])
   const [loading, setLoading] = useState(true)
 
-  const supabase = useMemo(() => createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  ), [])
+  const supabase = useMemo(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn('Supabase environment variables not found')
+      return null
+    }
+    
+    return createClient<Database>(supabaseUrl, supabaseAnonKey)
+  }, [])
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        if (!supabase) {
+          setLoading(false)
+          return
+        }
+        
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError || !session) {
