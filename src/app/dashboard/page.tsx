@@ -6,8 +6,6 @@ import ApiKeysList from '@/components/dashboard/ApiKeysList'
 import ChartAreaInteractive from '@/components/dashboard/ChartAreaInteractive'
 
 export default function DashboardHome() {
-  const [refreshTrigger] = useState(0)
-
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Welcome back 👋</h1>
@@ -15,13 +13,13 @@ export default function DashboardHome() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column */}
         <div className="space-y-6">
-          <ScoreCard key={refreshTrigger} />
+          <ScoreCard />
         </div>
         
         {/* Right Column */}
         <div className="space-y-6">
-          <ApiKeysList key={refreshTrigger} />
-          <ChartAreaInteractive key={refreshTrigger} />
+          <ApiKeysList />
+          <ChartAreaInteractive />
         </div>
       </div>
     </div>

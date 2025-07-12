@@ -85,11 +85,11 @@ export async function GET(req: NextRequest) {
           }
         }
 
-        const deeepData = await deeepRes.json()
+        const deeepData: unknown = await deeepRes.json()
 
         // Extract credits from DEEEP response - check api_keys array first
         let credits = 0
-        if (deeepData.api_keys && Array.isArray(deeepData.api_keys)) {
+        if (deeepData && typeof deeepData === 'object' && 'api_keys' in deeepData && Array.isArray(deeepData.api_keys)) {
           const matchingApiKey = deeepData.api_keys.find((key: { api_key: string; credits?: number }) => key.api_key === apiKey.api_key)
           if (matchingApiKey && matchingApiKey.credits) {
             credits = parseInt(matchingApiKey.credits) || 0
@@ -98,7 +98,7 @@ export async function GET(req: NextRequest) {
         
         // Fallback to direct field access if api_keys structure not found
         if (credits === 0) {
-          credits = deeepData.credits || deeepData.Credits || deeepData.credit || deeepData.credit_balance || deeepData.balance || 0
+          credits = (deeepData as any).credits || (deeepData as any).Credits || (deeepData as any).credit || (deeepData as any).credit_balance || (deeepData as any).balance || 0
         }
 
         return {
