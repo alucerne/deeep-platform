@@ -113,7 +113,7 @@ export default function ApiKeysList() {
     }
 
     fetchApiKeys()
-  }, [supabase.auth])
+  }, [supabase])
 
   // Fetch credits on component mount
   useEffect(() => {
