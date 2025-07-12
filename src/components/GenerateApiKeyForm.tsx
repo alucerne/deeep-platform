@@ -73,13 +73,13 @@ export default function GenerateApiKeyForm() {
       } else {
         console.error('Failed to fetch credits info')
       }
-    } catch (error) {
-      console.error('Error fetching credits info:', error)
+    } catch {
+      console.error('Error fetching credits info')
     } finally {
       setLoadingCreditsInfo(false)
       setRefreshingCredits(false)
     }
-  }, [])
+  }, [supabase.auth])
 
   // Fetch existing API keys on component mount
   useEffect(() => {
@@ -118,7 +118,7 @@ export default function GenerateApiKeyForm() {
   // Fetch credits on component mount
   useEffect(() => {
     fetchCredits()
-  }, [])
+  }, [fetchCredits])
 
   // Refresh API keys after successful generation
   const refreshApiKeys = async () => {
@@ -274,7 +274,7 @@ export default function GenerateApiKeyForm() {
           [apiKeyId]: { success: false, message: data.error || 'Failed to add credits' }
         }))
       }
-    } catch (error) {
+    } catch {
       setCreditResults(prev => ({
         ...prev,
         [apiKeyId]: { success: false, message: 'Network error occurred' }

@@ -6,7 +6,7 @@ import ApiKeysList from '@/components/dashboard/ApiKeysList'
 import ChartAreaInteractive from '@/components/dashboard/ChartAreaInteractive'
 
 export default function DashboardHome() {
-  const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [refreshTrigger] = useState(0)
 
   return (
     <div className="space-y-6">

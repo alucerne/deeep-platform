@@ -75,7 +75,7 @@ export default function BuyCreditsStandalonePanel() {
       } else {
         alert(data.error || 'Failed to create checkout session')
       }
-    } catch (error) {
+    } catch {
       alert('Network error occurred')
     } finally {
       setPurchasingCredits(false)

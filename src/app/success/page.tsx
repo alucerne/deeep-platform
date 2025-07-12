@@ -38,7 +38,7 @@ export default function SuccessPage() {
         } else {
           setError('Failed to fetch session details')
         }
-      } catch (err) {
+      } catch {
         setError('Network error occurred')
       } finally {
         setLoading(false)

@@ -4,11 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
 
-interface CreditInfo {
-  email: string
-  api_key: string
-  credits: number
-}
+
 
 export async function GET(req: NextRequest) {
   // Validate environment variable
