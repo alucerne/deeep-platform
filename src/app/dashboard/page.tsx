@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import ScoreCard from '@/components/dashboard/ScoreCard'
 import ApiKeysList from '@/components/dashboard/ApiKeysList'
 import ChartAreaInteractive from '@/components/dashboard/ChartAreaInteractive'
