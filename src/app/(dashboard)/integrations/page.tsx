@@ -5,7 +5,7 @@ import { VideoDialog } from "@/components/integrations/VideoDialog"
 
 export default function IntegrationsPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div>
         <h1 className="text-2xl font-bold">Integrations</h1>
         <p className="text-muted-foreground">
@@ -13,7 +13,7 @@ export default function IntegrationsPage() {
         </p>
       </div>
 
-      <div className="grid gap-6">
+      <div className="grid gap-6 max-w-4xl">
         {/* API Documentation Section */}
         <Card>
           <CardHeader>
