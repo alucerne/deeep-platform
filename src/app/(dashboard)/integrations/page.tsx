@@ -5,15 +5,15 @@ import { VideoDialog } from "@/components/integrations/VideoDialog"
 
 export default function IntegrationsPage() {
   return (
-    <div className="space-y-6 p-6">
-      <div>
+    <div className="space-y-6 p-6 flex flex-col items-center">
+      <div className="text-center max-w-2xl">
         <h1 className="text-2xl font-bold">Integrations</h1>
         <p className="text-muted-foreground">
           Connect DEEEP with your favorite tools and automate your email validation workflows.
         </p>
       </div>
 
-      <div className="grid gap-6 max-w-4xl">
+      <div className="grid gap-6 max-w-2xl w-full">
         {/* API Documentation Section */}
         <Card>
           <CardHeader>
@@ -27,7 +27,7 @@ export default function IntegrationsPage() {
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <a href="/docs" target="_blank" rel="noopener noreferrer">
+              <a href="https://app.swaggerhub.com/apis/deeep-d5f/Deeep-api/1.0.0" target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="mr-2 h-4 w-4" />
                 View API Documentation
               </a>
@@ -46,10 +46,10 @@ export default function IntegrationsPage() {
               Download our custom Make App to sync your email validations instantly.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex gap-3">
             <Button asChild>
               <a 
-                href="https://github.com/deeep-verify/make-app/releases/latest/download/deeep-make-app.zip" 
+                href="https://www.make.com/en/hq/app-invitation/6840e951bb07d4f89640059d5cb667eb" 
                 target="_blank" 
                 rel="noopener noreferrer"
               >
@@ -57,21 +57,6 @@ export default function IntegrationsPage() {
                 Download Make App
               </a>
             </Button>
-          </CardContent>
-        </Card>
-
-        {/* Interactive Video Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Play className="h-5 w-5" />
-              Getting Started with the Make App
-            </CardTitle>
-            <CardDescription>
-              Learn how to connect your workflows using our official integration.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
             <VideoDialog />
           </CardContent>
         </Card>
