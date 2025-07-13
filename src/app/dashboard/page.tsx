@@ -13,12 +13,12 @@ export default function DashboardHome() {
         {/* Left Column */}
         <div className="space-y-6">
           <ScoreCard />
+          <ChartAreaInteractive />
         </div>
         
         {/* Right Column */}
         <div className="space-y-6">
           <ApiKeysList />
-          <ChartAreaInteractive />
         </div>
       </div>
     </div>
