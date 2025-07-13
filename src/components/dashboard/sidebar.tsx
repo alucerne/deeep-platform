@@ -9,6 +9,7 @@ import {
   Wallet,
   KeyRound,
   History,
+  Puzzle,
 } from "lucide-react"
 
 const navigation = [
@@ -36,6 +37,11 @@ const navigation = [
     title: "Credit History",
     href: "/history",
     icon: History,
+  },
+  {
+    title: "Integrations",
+    href: "/integrations",
+    icon: Puzzle,
   },
 ]
 
