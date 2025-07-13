@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ExternalLink, Download, Play } from "lucide-react"
+import { ExternalLink, Download } from "lucide-react"
 import { VideoDialog } from "@/components/integrations/VideoDialog"
 
 export default function IntegrationsPage() {
