@@ -6,7 +6,7 @@ import { Database } from '@/types/database'
 import Papa from 'papaparse'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select } from '@/components/ui/select'
 import { Loader2, Upload, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
 
 interface BatchResponse {
@@ -360,22 +360,13 @@ export default function CsvUploader() {
       {/* API Key Selection */}
       <div className="space-y-2">
         <label className="text-sm font-medium">Select API Key</label>
-        <Select value={selectedApiKey} onValueChange={setSelectedApiKey}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select an API key" />
-          </SelectTrigger>
-          <SelectContent>
-            {apiKeys.map((apiKey) => (
-              <SelectItem key={apiKey.id} value={apiKey.api_key}>
-                <div className="flex items-center justify-between w-full">
-                  <span>{apiKey.email}</span>
-                  <span className="text-muted-foreground ml-2">
-                    {maskApiKey(apiKey.api_key)} • {getCreditsForApiKey(apiKey.api_key)} credits
-                  </span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
+        <Select value={selectedApiKey} onChange={(e) => setSelectedApiKey(e.target.value)}>
+          <option value="">Select an API key</option>
+          {apiKeys.map((apiKey) => (
+            <option key={apiKey.id} value={apiKey.api_key}>
+              {apiKey.email} ({maskApiKey(apiKey.api_key)}) • {getCreditsForApiKey(apiKey.api_key)} credits
+            </option>
+          ))}
         </Select>
         {selectedApiKeyInfo && (
           <p className="text-sm text-muted-foreground">
