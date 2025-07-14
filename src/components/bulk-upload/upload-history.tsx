@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Download, Loader2, Clock, CheckCircle, Trash2 } from 'lucide-react'
+import ValidationBreakdownChart from "@/components/charts/validation-breakdown-chart"
 
 interface BulkJob {
   id: string
@@ -246,6 +247,7 @@ export default function UploadHistory() {
         )}
       </div>
       
+      {/* Upload History Table */}
       <Table>
         <TableHeader>
           <TableRow>
@@ -329,6 +331,11 @@ export default function UploadHistory() {
           ))}
         </TableBody>
       </Table>
+
+      {/* Donut Chart Visualization */}
+      <div className="mt-8">
+        <ValidationBreakdownChart />
+      </div>
     </div>
   )
 } 
