@@ -36,6 +36,19 @@ export default function CsvUploader() {
     return createClient<Database>(supabaseUrl, supabaseAnonKey)
   }, [])
 
+  // Create a service role client for database operations
+  const supabaseService = useMemo(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.warn('Supabase service role key not found')
+      return null
+    }
+    
+    return createClient<Database>(supabaseUrl, serviceRoleKey)
+  }, [])
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0]
     if (!selectedFile) return
@@ -88,6 +101,9 @@ export default function CsvUploader() {
     setLoading(true)
     setError(null)
     setSuccess(null)
+    
+    console.log('🚀 Starting batch submission...')
+    console.log('📧 Emails to process:', emails.length)
 
     try {
       // Get current session
@@ -97,6 +113,8 @@ export default function CsvUploader() {
         setError('Not authenticated. Please log in.')
         return
       }
+
+      console.log('✅ User authenticated:', session.user.id)
 
       // Get user's API keys
       const apiKeysResponse = await fetch('/api/get-api-keys', {
@@ -120,46 +138,60 @@ export default function CsvUploader() {
       const apiKey = apiKeysData.apiKeys[0].api_key
       const user_id = session.user.id
 
+      console.log('🔑 Using API key:', apiKey.substring(0, 8) + '...')
+      console.log('👤 User ID:', user_id)
+
       // Submit to batch API
+      const callbackUrl = `${window.location.origin}/api/callback/${user_id}`
+      console.log('🔗 Callback URL:', callbackUrl)
+      
       const batchResponse = await fetch(`https://al-api.proxy4smtp.com/audlabapi/${apiKey}/email-validate-batch`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          callback_url: `https://app.deeepverify.com/api/callback/${user_id}`,
+          callback_url: callbackUrl,
           items: emails.join(',')
         })
       })
 
+      console.log('📡 Batch API response status:', batchResponse.status)
+
       if (!batchResponse.ok) {
         const errorText = await batchResponse.text()
+        console.error('❌ Batch API error:', errorText)
         setError(`Batch API error: ${errorText}`)
         return
       }
 
       const batchData: BatchResponse = await batchResponse.json()
+      console.log('✅ Batch API response:', batchData)
       
-      // Store in Supabase
-      const { error: dbError } = await supabase
-        .from('bulk_jobs')
-        .insert([
-          {
-            user_id,
-            batch_id: batchData.batch_id,
-            submitted_at: new Date().toISOString(),
-            num_valid_items: batchData.num_valid_items,
-            remaining_credits: batchData.remaining_credits,
-            status: 'processing',
-            download_link: null
-          }
-        ])
+      // Store in Supabase via API endpoint
+      const jobResponse = await fetch('/api/create-bulk-job', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          user_id,
+          batch_id: batchData.batch_id,
+          num_valid_items: batchData.num_valid_items,
+          remaining_credits: batchData.remaining_credits
+        })
+      })
 
-      if (dbError) {
-        console.error('Database error:', dbError)
+      if (!jobResponse.ok) {
+        const errorText = await jobResponse.text()
+        console.error('❌ Job creation error:', errorText)
         setError('Failed to save job to database')
         return
       }
+
+      const jobData = await jobResponse.json()
+      console.log('💾 Job saved to database successfully:', jobData)
 
       setSuccess(`Batch job submitted successfully! Batch ID: ${batchData.batch_id}`)
       setEmails([])
@@ -168,7 +200,7 @@ export default function CsvUploader() {
         fileInputRef.current.value = ''
       }
     } catch (err) {
-      console.error('Error submitting batch:', err)
+      console.error('❌ Error submitting batch:', err)
       setError('Failed to submit batch job. Please try again.')
     } finally {
       setLoading(false)
