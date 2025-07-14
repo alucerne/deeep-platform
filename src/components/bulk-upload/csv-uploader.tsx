@@ -56,19 +56,6 @@ export default function CsvUploader() {
     return createClient<Database>(supabaseUrl, supabaseAnonKey)
   }, [])
 
-  // Create a service role client for database operations
-  const supabaseService = useMemo(() => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    
-    if (!supabaseUrl || !serviceRoleKey) {
-      console.warn('Supabase service role key not found')
-      return null
-    }
-    
-    return createClient<Database>(supabaseUrl, serviceRoleKey)
-  }, [])
-
   // Fetch API keys and credits on component mount
   useEffect(() => {
     const fetchData = async () => {

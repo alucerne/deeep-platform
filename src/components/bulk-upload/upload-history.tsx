@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { Download, Loader2, Clock, CheckCircle, AlertCircle, Trash2 } from 'lucide-react'
+import { Download, Loader2, Clock, CheckCircle, Trash2 } from 'lucide-react'
 
 interface BulkJob {
   id: string
