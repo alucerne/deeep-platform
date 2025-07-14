@@ -4,16 +4,18 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts"
 import React from "react"
 
-const chartData = [
-  { result: "valid", count: 420, fill: "var(--color-valid)" },
-  { result: "invalid", count: 130, fill: "var(--color-invalid)" },
-  { result: "catchall", count: 70, fill: "var(--color-catchall)" },
-  { result: "unknown", count: 40, fill: "var(--color-unknown)" },
-]
+export interface ValidationBreakdownDatum {
+  result: string
+  count: number
+  fill: string
+}
 
-const total = chartData.reduce((sum, d) => sum + d.count, 0)
+interface ValidationBreakdownChartProps {
+  chartData: ValidationBreakdownDatum[]
+}
 
-export function ValidationBreakdownChart() {
+export function ValidationBreakdownChart({ chartData }: ValidationBreakdownChartProps) {
+  const total = chartData.reduce((sum, d) => sum + d.count, 0)
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardContent className="flex flex-col items-center justify-center py-8">

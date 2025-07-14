@@ -168,7 +168,7 @@ export default function UploadHistory() {
       .then(csv => {
         const parsed = Papa.parse(csv, { header: true })
         const counts: Record<string, number> = { valid: 0, invalid: 0, catchall: 0, unknown: 0 }
-        for (const row of parsed.data as any[]) {
+        for (const row of parsed.data as Record<string, string>[]) {
           const status = (row["Status"] || '').toLowerCase()
           if (status === 'valid' || status === 'invalid' || status === 'catchall') {
             counts[status]++
@@ -183,7 +183,7 @@ export default function UploadHistory() {
           { result: 'unknown', count: counts.unknown, fill: 'var(--color-unknown)' },
         ])
       })
-      .catch(e => setChartError('Failed to load chart data'))
+      .catch(() => setChartError('Failed to load chart data'))
       .finally(() => setChartLoading(false))
   }, [selectedJob])
 
