@@ -6,7 +6,8 @@ import { Database } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Download, Loader2, Clock } from 'lucide-react'
+import { Progress } from '@/components/ui/progress'
+import { Download, Loader2, Clock, CheckCircle, AlertCircle } from 'lucide-react'
 
 interface BulkJob {
   id: string
@@ -19,8 +20,14 @@ interface BulkJob {
   download_link: string | null
 }
 
+interface ProcessingJob extends BulkJob {
+  estimatedTimeRemaining?: number
+  progressPercentage?: number
+  timeElapsed?: number
+}
+
 export default function UploadHistory() {
-  const [jobs, setJobs] = useState<BulkJob[]>([])
+  const [jobs, setJobs] = useState<ProcessingJob[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -34,6 +41,30 @@ export default function UploadHistory() {
     }
     
     return createClient<Database>(supabaseUrl, supabaseAnonKey)
+  }, [])
+
+  // Calculate processing progress and estimated time
+  const calculateProgress = useCallback((job: BulkJob): ProcessingJob => {
+    if (job.status === 'complete') {
+      return { ...job, progressPercentage: 100, estimatedTimeRemaining: 0 }
+    }
+
+    const submittedTime = new Date(job.submitted_at).getTime()
+    const now = Date.now()
+    const timeElapsed = Math.floor((now - submittedTime) / 1000) // seconds
+
+    // Estimate processing time based on email count
+    // Assume ~3-5 seconds per email on average
+    const estimatedTotalTime = Math.max(30, job.num_valid_items * 3) // minimum 30 seconds
+    const progressPercentage = Math.min(95, (timeElapsed / estimatedTotalTime) * 100)
+    const estimatedTimeRemaining = Math.max(0, estimatedTotalTime - timeElapsed)
+
+    return {
+      ...job,
+      progressPercentage: Math.floor(progressPercentage),
+      estimatedTimeRemaining,
+      timeElapsed
+    }
   }, [])
 
   const fetchJobs = useCallback(async (isRefresh = false) => {
@@ -65,7 +96,9 @@ export default function UploadHistory() {
       if (error) {
         console.error('Error fetching bulk jobs:', error)
       } else {
-        setJobs(data || [])
+        // Calculate progress for each job
+        const jobsWithProgress = (data || []).map(calculateProgress)
+        setJobs(jobsWithProgress)
       }
     } catch (error) {
       console.error('Error fetching bulk jobs:', error)
@@ -73,11 +106,11 @@ export default function UploadHistory() {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [supabase])
+  }, [supabase, calculateProgress])
 
   useEffect(() => {
     fetchJobs()
-  }, [supabase])
+  }, [fetchJobs])
 
   // Auto-refresh every 10 seconds for jobs that are still processing
   useEffect(() => {
@@ -93,6 +126,19 @@ export default function UploadHistory() {
     return () => clearInterval(interval)
   }, [jobs, fetchJobs, supabase])
 
+  // Update progress every 30 seconds for processing jobs
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setJobs(prevJobs => 
+        prevJobs.map(job => 
+          job.status === 'processing' ? calculateProgress(job) : job
+        )
+      )
+    }, 30000)
+
+    return () => clearInterval(interval)
+  }, [calculateProgress])
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -103,11 +149,31 @@ export default function UploadHistory() {
     })
   }
 
+  const formatTime = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return `${minutes}m ${remainingSeconds}s`
+  }
+
   const getStatusBadge = (status: string) => {
     if (status === 'complete') {
       return <Badge className="bg-green-100 text-green-800">Complete</Badge>
     } else {
       return <Badge className="bg-yellow-100 text-yellow-800">Processing</Badge>
+    }
+  }
+
+  const getProgressMessage = (job: ProcessingJob) => {
+    if (job.status === 'complete') return null
+
+    const emailCount = job.num_valid_items
+    if (emailCount <= 50) {
+      return "Processing small batch..."
+    } else if (emailCount <= 200) {
+      return "Processing medium batch..."
+    } else {
+      return "Processing large batch..."
     }
   }
 
@@ -152,6 +218,7 @@ export default function UploadHistory() {
             <TableHead>Date</TableHead>
             <TableHead># Emails</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Progress</TableHead>
             <TableHead>Download Link</TableHead>
           </TableRow>
         </TableHeader>
@@ -168,6 +235,28 @@ export default function UploadHistory() {
                 {getStatusBadge(job.status)}
               </TableCell>
               <TableCell>
+                {job.status === 'processing' ? (
+                  <div className="space-y-2 min-w-[200px]">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{getProgressMessage(job)}</span>
+                      <span>{job.progressPercentage}%</span>
+                    </div>
+                    <Progress value={job.progressPercentage} className="h-2" />
+                    {job.estimatedTimeRemaining && job.estimatedTimeRemaining > 0 && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        <span>~{formatTime(job.estimatedTimeRemaining)} remaining</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-green-600">
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="text-sm">Complete</span>
+                  </div>
+                )}
+              </TableCell>
+              <TableCell>
                 {job.status === 'complete' && job.download_link ? (
                   <Button
                     variant="outline"
@@ -178,10 +267,15 @@ export default function UploadHistory() {
                     <Download className="h-4 w-4" />
                     Download CSV
                   </Button>
-                ) : (
+                ) : job.status === 'processing' ? (
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span className="text-sm">Processing...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="text-sm">No download available</span>
                   </div>
                 )}
               </TableCell>
