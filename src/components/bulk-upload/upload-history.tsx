@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Download, Loader2, Clock, CheckCircle, Trash2 } from 'lucide-react'
-import ValidationBreakdownChart from "@/components/charts/validation-breakdown-chart"
+import ValidationBreakdownChart, { ValidationBreakdownDatum } from "@/components/charts/validation-breakdown-chart"
+import Papa from 'papaparse'
 
 interface BulkJob {
   id: string
@@ -33,6 +34,10 @@ export default function UploadHistory() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null)
+  const [selectedJob, setSelectedJob] = useState<ProcessingJob | null>(null)
+  const [chartData, setChartData] = useState<ValidationBreakdownDatum[] | null>(null)
+  const [chartLoading, setChartLoading] = useState(false)
+  const [chartError, setChartError] = useState<string | null>(null)
 
   const supabase = useMemo(() => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -141,6 +146,46 @@ export default function UploadHistory() {
 
     return () => clearInterval(interval)
   }, [calculateProgress])
+
+  // Select the most recent complete job by default
+  useEffect(() => {
+    if (!selectedJob && jobs.length > 0) {
+      const mostRecent = jobs.find(j => j.status === 'complete') || jobs[0]
+      setSelectedJob(mostRecent)
+    }
+  }, [jobs, selectedJob])
+
+  // Fetch and parse CSV for selected job
+  useEffect(() => {
+    if (!selectedJob || selectedJob.status !== 'complete') {
+      setChartData(null)
+      return
+    }
+    setChartLoading(true)
+    setChartError(null)
+    fetch(`/api/download-results/${selectedJob.batch_id}`)
+      .then(res => res.text())
+      .then(csv => {
+        const parsed = Papa.parse(csv, { header: true })
+        const counts: Record<string, number> = { valid: 0, invalid: 0, catchall: 0, unknown: 0 }
+        for (const row of parsed.data as any[]) {
+          const status = (row["Status"] || '').toLowerCase()
+          if (status === 'valid' || status === 'invalid' || status === 'catchall') {
+            counts[status]++
+          } else {
+            counts.unknown++
+          }
+        }
+        setChartData([
+          { result: 'valid', count: counts.valid, fill: 'var(--color-valid)' },
+          { result: 'invalid', count: counts.invalid, fill: 'var(--color-invalid)' },
+          { result: 'catchall', count: counts.catchall, fill: 'var(--color-catchall)' },
+          { result: 'unknown', count: counts.unknown, fill: 'var(--color-unknown)' },
+        ])
+      })
+      .catch(e => setChartError('Failed to load chart data'))
+      .finally(() => setChartLoading(false))
+  }, [selectedJob])
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -261,7 +306,15 @@ export default function UploadHistory() {
         </TableHeader>
         <TableBody>
           {jobs.map((job) => (
-            <TableRow key={job.id}>
+            <TableRow
+              key={job.id}
+              onClick={() => setSelectedJob(job)}
+              className={
+                selectedJob && selectedJob.id === job.id
+                  ? 'bg-accent cursor-pointer' : 'cursor-pointer hover:bg-muted'
+              }
+              style={{ transition: 'background 0.2s' }}
+            >
               <TableCell>
                 {formatDate(job.submitted_at)}
               </TableCell>
@@ -334,7 +387,16 @@ export default function UploadHistory() {
 
       {/* Donut Chart Visualization */}
       <div className="mt-8">
-        <ValidationBreakdownChart />
+        {chartLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span className="ml-2">Loading chart...</span>
+          </div>
+        ) : chartError ? (
+          <div className="text-center text-red-500 py-8">{chartError}</div>
+        ) : chartData ? (
+          <ValidationBreakdownChart chartData={chartData} />
+        ) : null}
       </div>
     </div>
   )
