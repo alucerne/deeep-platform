@@ -11,13 +11,6 @@ const chartData = [
   { result: "unknown", count: 40, fill: "var(--color-unknown)" },
 ]
 
-const COLORS: Record<string, string> = {
-  valid: "bg-green-500",
-  invalid: "bg-red-500",
-  catchall: "bg-yellow-500",
-  unknown: "bg-gray-400",
-}
-
 const total = chartData.reduce((sum, d) => sum + d.count, 0)
 
 export function ValidationBreakdownChart() {
@@ -38,7 +31,7 @@ export function ValidationBreakdownChart() {
                 label={false}
                 stroke="none"
               >
-                {chartData.map((entry, idx) => (
+                {chartData.map((entry) => (
                   <Cell key={`cell-${entry.result}`} fill={entry.fill} />
                 ))}
               </Pie>
