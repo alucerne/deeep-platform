@@ -177,8 +177,10 @@ export default function UploadHistory() {
     }
   }
 
-  const handleDownload = (downloadLink: string) => {
-    window.open(downloadLink, '_blank')
+  const handleDownload = (batchId: string) => {
+    // Use our download endpoint instead of external URL
+    const downloadUrl = `${window.location.origin}/api/download-results/${batchId}`
+    window.open(downloadUrl, '_blank')
   }
 
   if (loading) {
@@ -257,11 +259,11 @@ export default function UploadHistory() {
                 )}
               </TableCell>
               <TableCell>
-                {job.status === 'complete' && job.download_link ? (
+                {job.status === 'complete' ? (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleDownload(job.download_link!)}
+                    onClick={() => handleDownload(job.batch_id)}
                     className="flex items-center gap-2"
                   >
                     <Download className="h-4 w-4" />
