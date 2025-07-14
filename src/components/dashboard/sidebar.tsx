@@ -10,6 +10,7 @@ import {
   KeyRound,
   History,
   Puzzle,
+  Upload,
 } from "lucide-react"
 
 const navigation = [
@@ -37,6 +38,11 @@ const navigation = [
     title: "Credit History",
     href: "/history",
     icon: History,
+  },
+  {
+    title: "Bulk Upload",
+    href: "/bulk-upload",
+    icon: Upload,
   },
   {
     title: "Integrations",

@@ -56,6 +56,41 @@ export interface Database {
           created_at?: string
         }
       }
+      bulk_jobs: {
+        Row: {
+          id: string
+          user_id: string
+          batch_id: string
+          submitted_at: string
+          num_valid_items: number
+          remaining_credits: number
+          status: 'processing' | 'complete'
+          download_link: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          batch_id: string
+          submitted_at?: string
+          num_valid_items: number
+          remaining_credits: number
+          status?: 'processing' | 'complete'
+          download_link?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          batch_id?: string
+          submitted_at?: string
+          num_valid_items?: number
+          remaining_credits?: number
+          status?: 'processing' | 'complete'
+          download_link?: string | null
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
