@@ -2,13 +2,14 @@ const { createClient } = require('@supabase/supabase-js')
 require('dotenv').config({ path: '.env.local' })
 
 async function debugBulkJob() {
+  // Use service role key to bypass RLS policies
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    process.env.SUPABASE_SERVICE_ROLE_KEY
   )
 
   try {
-    console.log('🔍 Checking bulk_jobs table...')
+    console.log('🔍 Checking bulk_jobs table with service role...')
     
     // Get all recent bulk jobs
     const { data: jobs, error } = await supabase

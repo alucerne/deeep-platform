@@ -25,10 +25,10 @@ export async function POST(
       )
     }
 
-    // Create Supabase client
+    // Create Supabase client with service role key to bypass RLS
     const supabase = createClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
     console.log('🔍 Looking for bulk job with batch_id:', batch_id, 'and user_id:', user_id)
