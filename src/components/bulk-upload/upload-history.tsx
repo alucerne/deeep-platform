@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { Download, Loader2, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import { Download, Loader2, Clock, CheckCircle, AlertCircle, Trash2 } from 'lucide-react'
 
 interface BulkJob {
   id: string
@@ -18,6 +18,7 @@ interface BulkJob {
   remaining_credits: number
   status: 'processing' | 'complete'
   download_link: string | null
+  api_key: string | null
 }
 
 interface ProcessingJob extends BulkJob {
@@ -30,6 +31,7 @@ export default function UploadHistory() {
   const [jobs, setJobs] = useState<ProcessingJob[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [deletingJobId, setDeletingJobId] = useState<string | null>(null)
 
   const supabase = useMemo(() => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -183,6 +185,36 @@ export default function UploadHistory() {
     window.open(downloadUrl, '_blank')
   }
 
+  const handleDelete = async (jobId: string) => {
+    if (!confirm('Are you sure you want to delete this bulk upload? This action cannot be undone.')) {
+      return
+    }
+
+    setDeletingJobId(jobId)
+
+    try {
+      const response = await fetch('/api/delete-bulk-job', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ job_id: jobId }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete bulk job')
+      }
+
+      // Remove the job from the local state
+      setJobs(prevJobs => prevJobs.filter(job => job.id !== jobId))
+    } catch (error) {
+      console.error('Error deleting bulk job:', error)
+      alert('Failed to delete bulk job. Please try again.')
+    } finally {
+      setDeletingJobId(null)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -219,9 +251,10 @@ export default function UploadHistory() {
           <TableRow>
             <TableHead>Date</TableHead>
             <TableHead># Emails</TableHead>
+            <TableHead>API Key</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Progress</TableHead>
-            <TableHead>Download Link</TableHead>
+            <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -232,6 +265,11 @@ export default function UploadHistory() {
               </TableCell>
               <TableCell>
                 {job.num_valid_items.toLocaleString()}
+              </TableCell>
+              <TableCell>
+                <span className="text-sm text-muted-foreground font-mono">
+                  {job.api_key || 'N/A'}
+                </span>
               </TableCell>
               <TableCell>
                 {getStatusBadge(job.status)}
@@ -259,27 +297,33 @@ export default function UploadHistory() {
                 )}
               </TableCell>
               <TableCell>
-                {job.status === 'complete' ? (
+                <div className="flex items-center gap-2">
+                  {job.status === 'complete' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownload(job.batch_id)}
+                      className="flex items-center gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleDownload(job.batch_id)}
-                    className="flex items-center gap-2"
+                    onClick={() => handleDelete(job.id)}
+                    disabled={deletingJobId === job.id}
+                    className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
                   >
-                    <Download className="h-4 w-4" />
-                    Download CSV
+                    {deletingJobId === job.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                    {deletingJobId === job.id ? 'Deleting...' : 'Delete'}
                   </Button>
-                ) : job.status === 'processing' ? (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm">Processing...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <AlertCircle className="h-4 w-4" />
-                    <span className="text-sm">No download available</span>
-                  </div>
-                )}
+                </div>
               </TableCell>
             </TableRow>
           ))}

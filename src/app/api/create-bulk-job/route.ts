@@ -4,16 +4,16 @@ import { Database } from '@/types/database'
 
 export async function POST(req: NextRequest) {
   try {
-    const { user_id, batch_id, num_valid_items, remaining_credits } = await req.json()
+    const { user_id, batch_id, num_valid_items, remaining_credits, api_key } = await req.json()
 
-    if (!user_id || !batch_id || !num_valid_items || !remaining_credits) {
+    if (!user_id || !batch_id || !num_valid_items || !remaining_credits || !api_key) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       )
     }
 
-    console.log('🔔 Creating bulk job:', { user_id, batch_id, num_valid_items })
+    console.log('🔔 Creating bulk job:', { user_id, batch_id, num_valid_items, api_key: api_key.substring(0, 8) + '...' })
 
     // Create Supabase client with service role key
     const supabase = createClient<Database>(
@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
           num_valid_items,
           remaining_credits,
           status: 'processing',
-          download_link: null
+          download_link: null,
+          api_key: api_key.substring(0, 8) + '...' // Store masked API key for reference
         }
       ])
       .select()

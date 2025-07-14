@@ -66,6 +66,7 @@ export interface Database {
           remaining_credits: number
           status: 'processing' | 'complete'
           download_link: string | null
+          api_key: string | null
           created_at: string
         }
         Insert: {
@@ -77,6 +78,7 @@ export interface Database {
           remaining_credits: number
           status?: 'processing' | 'complete'
           download_link?: string | null
+          api_key?: string | null
           created_at?: string
         }
         Update: {
@@ -88,6 +90,7 @@ export interface Database {
           remaining_credits?: number
           status?: 'processing' | 'complete'
           download_link?: string | null
+          api_key?: string | null
           created_at?: string
         }
       }
