@@ -21,41 +21,4 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     </select>
   )
 )
-Select.displayName = "Select"
-
-const SelectTrigger = Select
-
-const SelectValue = ({ placeholder }: { placeholder?: string }) => {
-  return <span className="text-muted-foreground">{placeholder}</span>
-}
-
-const SelectContent = ({ children }: { children: React.ReactNode }) => {
-  return <>{children}</>
-}
-
-const SelectItem = React.forwardRef<
-  HTMLOptionElement,
-  React.OptionHTMLAttributes<HTMLOptionElement>
->(({ className, children, ...props }, ref) => {
-  return (
-    <option
-      ref={ref}
-      className={cn(
-        "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </option>
-  )
-})
-SelectItem.displayName = "SelectItem"
-
-export {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} 
+Select.displayName = "Select" 
