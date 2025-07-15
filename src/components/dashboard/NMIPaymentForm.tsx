@@ -82,8 +82,8 @@ export default function NMIPaymentForm() {
           const data = await response.json()
           setApiKeys(data.apiKeys || [])
         }
-      } catch (error) {
-        console.error('Error fetching API keys:', error)
+      } catch {
+        console.error('Error fetching API keys')
       } finally {
         setLoadingKeys(false)
       }
@@ -98,7 +98,7 @@ export default function NMIPaymentForm() {
       setFormData(prev => ({
         ...prev,
         [parent]: {
-          ...prev[parent as keyof PaymentFormData],
+          ...(prev[parent as keyof PaymentFormData] as Record<string, string>),
           [child]: value
         }
       }))
@@ -188,7 +188,7 @@ export default function NMIPaymentForm() {
       } else {
         setPaymentError(data.error || 'Payment failed')
       }
-    } catch (error) {
+    } catch {
       setPaymentError('Network error occurred')
     } finally {
       setProcessingPayment(false)

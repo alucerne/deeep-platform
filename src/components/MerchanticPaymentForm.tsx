@@ -151,7 +151,7 @@ export default function MerchanticPaymentForm() {
       } else {
         setError(data.response || 'Payment failed')
       }
-    } catch (error) {
+    } catch {
       setError('Network error occurred')
     } finally {
       setLoading(false)
