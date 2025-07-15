@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
       
       // Extract API key and credits from order ID or custom fields
       let api_key = webhookData.api_key
-      let credits = webhookData.credits ? parseInt(webhookData.credits) : 0
+      const credits = webhookData.credits ? parseInt(webhookData.credits) : 0
 
       // If not in custom fields, try to extract from order ID
       if (!api_key && webhookData.orderid) {

@@ -14,7 +14,6 @@ interface NMIPaymentData {
 
 function SuccessPageContent() {
   const searchParams = useSearchParams()
-  const router = useRouter()
   const [paymentData, setPaymentData] = useState<NMIPaymentData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
