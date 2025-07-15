@@ -30,6 +30,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }
 
+    // Get the currently logged-in user
+    const {
+      data: { user },
+      error: userError
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized or user not found' }, { status: 401 })
+    }
+
+    // First, check if we already have an API key for this user in Supabase
+    const { data: existingKey, error: existingKeyError } = await supabase
+      .from('deeep_api_keys')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('email', email)
+      .single()
+
+    if (existingKey && !existingKeyError) {
+      console.log('✅ Found existing API key for user:', existingKey.api_key.substring(0, 8) + '...')
+      return NextResponse.json({ 
+        success: true, 
+        apiKey: existingKey,
+        message: 'Using existing API key'
+      }, { status: 200 })
+    }
+
     // Call DEEEP API to generate a new user
     const deeepRes = await fetch('https://al-api.proxy4smtp.com/audlabserviceusers/newuser', {
       method: 'POST',
@@ -43,34 +70,44 @@ export async function POST(req: NextRequest) {
       })
     })
 
-    if (!deeepRes.ok) {
-      const errorText = await deeepRes.text()
-      console.error('DEEEP API error:', deeepRes.status, errorText)
-      return NextResponse.json({ error: `DEEEP API error: ${errorText}` }, { status: 500 })
-    }
-
     const deeepData = await deeepRes.json()
     console.log('DEEEP API response:', deeepData)
     
-    // Extract api_key and customer_link from response
-    const api_key = deeepData.api_key || deeepData.apiKey || deeepData.key
-    const customer_link = deeepData.customer_link || deeepData.customerLink || deeepData.link
+    let api_key: string | undefined
+    let customer_link: string | undefined
+
+    if (deeepRes.ok) {
+      // Extract api_key and customer_link from response
+      api_key = deeepData.api_key || deeepData.apiKey || deeepData.key
+      customer_link = deeepData.customer_link || deeepData.customerLink || deeepData.link
+    } else if (deeepData.Message === 'User exists') {
+      // User already exists, try to get their API key
+      console.log('User exists, attempting to retrieve API key...')
+      
+      const getKeyRes = await fetch('https://al-api.proxy4smtp.com/audlabserviceusers/getuser', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.DEEEP_BEARER_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email })
+      })
+
+      if (getKeyRes.ok) {
+        const userData = await getKeyRes.json()
+        api_key = userData.api_key || userData.apiKey || userData.key
+        customer_link = userData.customer_link || userData.customerLink || userData.link
+        console.log('Retrieved existing user API key:', api_key ? api_key.substring(0, 8) + '...' : 'Not found')
+      } else {
+        console.error('Failed to retrieve existing user API key:', await getKeyRes.text())
+      }
+    }
     
     if (!api_key) {
       console.error('No api_key found in DEEEP response:', deeepData)
       return NextResponse.json({ 
         error: 'DEEEP API did not return an API key. Response: ' + JSON.stringify(deeepData) 
       }, { status: 500 })
-    }
-
-    // Get the currently logged-in user
-    const {
-      data: { user },
-      error: userError
-    } = await supabase.auth.getUser()
-
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized or user not found' }, { status: 401 })
     }
 
     // Insert the API key into Supabase
@@ -88,6 +125,24 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error) {
+      // If insert fails due to duplicate, try to get the existing record
+      if (error.code === '23505') { // Unique constraint violation
+        const { data: existingData, error: selectError } = await supabase
+          .from('deeep_api_keys')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('email', email)
+          .single()
+
+        if (existingData && !selectError) {
+          return NextResponse.json({ 
+            success: true, 
+            apiKey: existingData,
+            message: 'API key already exists'
+          }, { status: 200 })
+        }
+      }
+      
       return NextResponse.json({ error: `Supabase insert error: ${error.message}` }, { status: 500 })
     }
 

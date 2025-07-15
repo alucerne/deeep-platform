@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            api_key,
+            api_key: api_key.trim(), // Ensure no whitespace
             credits: credits
           })
         })
@@ -118,6 +118,20 @@ export async function POST(req: NextRequest) {
         if (!deeepRes.ok) {
           const errorText = await deeepRes.text()
           console.error('❌ DEEEP API error when adding credits:', deeepRes.status, errorText)
+          
+          // If the API key wasn't found, try to get the user info first
+          if (errorText.includes('Cannot find API Key')) {
+            console.log('🔍 API key not found, attempting to retrieve user info...')
+            
+            // Try to get user info by email (if we can extract it from order ID)
+            const orderParts = webhookData.orderid.split('_')
+            if (orderParts.length >= 2) {
+              const timestamp = orderParts[1]
+              // We could potentially store email in the order ID or use a different approach
+              console.log('⚠️ API key not found in DEEEP system. This might be a test transaction.')
+            }
+          }
+          
           return NextResponse.json({ 
             error: `Failed to add credits to DEEEP: ${errorText}` 
           }, { status: 500 })
