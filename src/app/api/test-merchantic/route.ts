@@ -1,21 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   try {
-    // Check if environment variables are set
+    console.log('🔐 Testing Merchantic API connection...')
+
+    // Validate environment variables
     if (!process.env.MERCHANT_USERNAME || !process.env.MERCHANT_PASSWORD || !process.env.MERCHANT_GATEWAY_URL) {
+      console.error('❌ Merchantic environment variables are not set')
       return NextResponse.json({ 
-        success: false, 
-        error: 'Server configuration error - Missing environment variables',
-        missing: {
-          username: !process.env.MERCHANT_USERNAME,
-          password: !process.env.MERCHANT_PASSWORD,
-          gateway_url: !process.env.MERCHANT_GATEWAY_URL
-        }
+        error: 'Server configuration error',
+        message: 'Merchantic environment variables are not configured'
       }, { status: 500 })
     }
 
-    // Test with a minimal request to Merchantic
+    // Prepare test request data
     const testData = new URLSearchParams({
       username: process.env.MERCHANT_USERNAME,
       password: process.env.MERCHANT_PASSWORD,
@@ -26,12 +24,10 @@ export async function POST(req: NextRequest) {
       amount: '1.00',
       currency: 'usd',
       orderid: `TEST_${Date.now()}`,
-      orderdescription: 'Test payment',
-      email: 'test@example.com'
+      orderdescription: 'Test transaction'
     })
 
-    console.log('🔐 Testing Merchantic API connection...')
-
+    // Make test request to Merchantic API
     const response = await fetch(process.env.MERCHANT_GATEWAY_URL, {
       method: 'POST',
       headers: {
@@ -40,29 +36,43 @@ export async function POST(req: NextRequest) {
       body: testData.toString()
     })
 
+    if (!response.ok) {
+      console.error('❌ Merchantic API request failed:', response.status, response.statusText)
+      return NextResponse.json({ 
+        error: 'Payment gateway error',
+        status: response.status,
+        statusText: response.statusText
+      }, { status: 500 })
+    }
+
     const responseText = await response.text()
     console.log('📡 Merchantic test response:', responseText)
 
-    // Parse the response
+    // Parse response
     const responseParams = new URLSearchParams(responseText)
     const responseCode = responseParams.get('response')
-    const responseText_parsed = responseParams.get('responsetext')
+    const responseText_ = responseParams.get('responsetext')
 
-    return NextResponse.json({
-      success: true,
-      message: 'Merchantic API test completed',
-      response_code: responseCode,
-      response_text: responseText_parsed,
-      environment: process.env.NODE_ENV,
-      gateway_url: process.env.MERCHANT_GATEWAY_URL ? 'Set' : 'Not set'
-    })
+    if (responseCode === '1') {
+      return NextResponse.json({ 
+        success: true,
+        message: 'Merchantic API connection successful',
+        response: responseText_
+      })
+    } else {
+      return NextResponse.json({ 
+        success: false,
+        message: 'Merchantic API connection failed',
+        response: responseText_,
+        response_code: responseCode
+      }, { status: 400 })
+    }
 
-  } catch (error) {
-    console.error('❌ Merchantic test error:', error)
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Internal server error'
+    console.error('❌ Merchantic test error:', errorMessage)
     return NextResponse.json({ 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error',
-      environment: process.env.NODE_ENV
+      error: errorMessage
     }, { status: 500 })
   }
 } 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   const envCheck = {
     environment: process.env.NODE_ENV,
     debug_secret_key: {
