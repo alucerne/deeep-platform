@@ -170,3 +170,4 @@ function SuccessPageContent() {
 
 export default function SuccessPage() {
   return <SuccessPageContent />
+}
