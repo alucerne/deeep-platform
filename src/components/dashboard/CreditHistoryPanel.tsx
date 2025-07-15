@@ -10,9 +10,9 @@ import {
 } from "@/components/ui/table"
 
 const mockHistory = [
-  { date: '2025-07-10', type: 'Purchase', credits: 1000000, method: 'Stripe' },
+  { date: '2025-07-10', type: 'Purchase', credits: 1000000, method: 'NMI' },
   { date: '2025-07-08', type: 'Admin Credit', credits: 2000, method: 'Manual' },
-  { date: '2025-07-05', type: 'Purchase', credits: 500000, method: 'Stripe' },
+  { date: '2025-07-05', type: 'Purchase', credits: 500000, method: 'NMI' },
 ]
 
 export default function CreditHistoryPanel() {

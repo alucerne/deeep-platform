@@ -10,9 +10,9 @@ import {
 } from "@/components/ui/table"
 
 const mockPayments = [
-  { date: '2025-07-10', amount: 200.00, status: 'Completed', method: 'Stripe' },
-  { date: '2025-07-08', amount: 100.00, status: 'Completed', method: 'Stripe' },
-  { date: '2025-07-05', amount: 50.00, status: 'Completed', method: 'Stripe' },
+  { date: '2025-07-10', amount: 200.00, status: 'Completed', method: 'NMI' },
+  { date: '2025-07-08', amount: 100.00, status: 'Completed', method: 'NMI' },
+  { date: '2025-07-05', amount: 50.00, status: 'Completed', method: 'NMI' },
 ]
 
 export default function PaymentsPanel() {
