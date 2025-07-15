@@ -126,7 +126,6 @@ export async function POST(req: NextRequest) {
             // Try to get user info by email (if we can extract it from order ID)
             const orderParts = webhookData.orderid.split('_')
             if (orderParts.length >= 2) {
-              const timestamp = orderParts[1]
               // We could potentially store email in the order ID or use a different approach
               console.log('⚠️ API key not found in DEEEP system. This might be a test transaction.')
             }
