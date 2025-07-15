@@ -3,13 +3,30 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(req: NextRequest) {
   // Only allow this in development or with a secret key
   const authHeader = req.headers.get('authorization')
+  const debugSecretKey = process.env.DEBUG_SECRET_KEY
+  
+  console.log('🔍 Debug endpoint accessed:')
+  console.log('  - NODE_ENV:', process.env.NODE_ENV)
+  console.log('  - Auth header:', authHeader)
+  console.log('  - DEBUG_SECRET_KEY:', debugSecretKey ? `${debugSecretKey.substring(0, 4)}...` : 'Not set')
+  console.log('  - Expected:', `Bearer ${debugSecretKey}`)
+  
   const isAuthorized = process.env.NODE_ENV === 'development' || 
                       authHeader === `Bearer ${process.env.DEBUG_SECRET_KEY}`
+
+  console.log('  - Is authorized:', isAuthorized)
 
   if (!isAuthorized) {
     return NextResponse.json({ 
       error: 'Unauthorized',
-      message: 'This endpoint is only available in development or with proper authorization'
+      message: 'This endpoint is only available in development or with proper authorization',
+      debug: {
+        nodeEnv: process.env.NODE_ENV,
+        hasAuthHeader: !!authHeader,
+        hasDebugKey: !!debugSecretKey,
+        authHeaderValue: authHeader,
+        expectedValue: `Bearer ${debugSecretKey}`
+      }
     }, { status: 401 })
   }
 
