@@ -81,26 +81,13 @@ export async function POST(req: NextRequest) {
       api_key = deeepData.api_key || deeepData.apiKey || deeepData.key
       customer_link = deeepData.customer_link || deeepData.customerLink || deeepData.link
     } else if (deeepData.Message === 'User exists') {
-      // User already exists, try to get their API key
-      console.log('User exists, attempting to retrieve API key...')
+      // User already exists, but we can't retrieve their API key without a customer_link
+      console.log('User exists but cannot retrieve API key without customer_link')
       
-      const getKeyRes = await fetch('https://al-api.proxy4smtp.com/audlabserviceusers/getuser', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.DEEEP_BEARER_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email })
-      })
-
-      if (getKeyRes.ok) {
-        const userData = await getKeyRes.json()
-        api_key = userData.api_key || userData.apiKey || userData.key
-        customer_link = userData.customer_link || userData.customerLink || userData.link
-        console.log('Retrieved existing user API key:', api_key ? api_key.substring(0, 8) + '...' : 'Not found')
-      } else {
-        console.error('Failed to retrieve existing user API key:', await getKeyRes.text())
-      }
+      return NextResponse.json({ 
+        error: 'User already exists in DEEEP system but API key cannot be retrieved automatically. Please contact support to get your API key or try creating a new account with a different email.',
+        details: 'The DEEEP API requires a customer_link to retrieve existing user information, which is not available for users created through this interface.'
+      }, { status: 400 })
     }
     
     if (!api_key) {

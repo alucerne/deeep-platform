@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       email: card_holder_name, // Using card holder name as email placeholder
       ipaddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || '127.0.0.1',
       // Add webhook URL for payment confirmation
-      webhook_url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/webhooks/nmi`,
+      webhook_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/webhooks/nmi`,
       // Add custom fields for webhook processing
       api_key: api_key,
       credits: credits.toString()
