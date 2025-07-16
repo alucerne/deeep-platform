@@ -51,9 +51,9 @@ serve(async (req) => {
         })
       }
       
-      if (!body.emails || !Array.isArray(body.emails)) {
-        console.error(`❌ Invalid JSON structure: missing or invalid emails array`)
-        return new Response(JSON.stringify({ error: 'Invalid JSON format. Expected { "emails": ["email1", "email2"] }' }), {
+      if (!body.emails) {
+        console.error(`❌ Invalid JSON structure: missing emails field`)
+        return new Response(JSON.stringify({ error: 'Invalid JSON format. Expected { "emails": ["email1", "email2"] } or { "emails": "email1,email2" }' }), {
           status: 400,
           headers: {
             'Content-Type': 'application/json',
@@ -62,19 +62,53 @@ serve(async (req) => {
         })
       }
 
-      emails = body.emails.filter((email: any) => {
-        if (typeof email !== 'string') {
-          console.warn(`⚠️ Skipping non-string email: ${email}`)
-          return false
+      // Handle both array and string formats
+      if (Array.isArray(body.emails)) {
+        // Array format: { "emails": ["email1", "email2"] }
+        emails = body.emails.filter((email: any) => {
+          if (typeof email !== 'string') {
+            console.warn(`⚠️ Skipping non-string email: ${email}`)
+            return false
+          }
+          if (email.trim() === '') {
+            console.warn(`⚠️ Skipping empty email`)
+            return false
+          }
+          return true
+        })
+        console.log(`✅ Processed ${emails.length} valid emails from JSON array`)
+      } else if (typeof body.emails === 'string') {
+        // String format: { "emails": "email1,email2" }
+        const emailString = body.emails.trim()
+        if (emailString === '') {
+          console.error(`❌ Empty emails string`)
+          return new Response(JSON.stringify({ error: 'Emails string cannot be empty' }), {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+            }
+          })
         }
-        if (email.trim() === '') {
-          console.warn(`⚠️ Skipping empty email`)
-          return false
-        }
-        return true
-      })
-      
-      console.log(`✅ Processed ${emails.length} valid emails from JSON`)
+        
+        emails = emailString.split(',').map(email => email.trim()).filter(email => {
+          if (email === '') {
+            console.warn(`⚠️ Skipping empty email`)
+            return false
+          }
+          return true
+        })
+        console.log(`✅ Processed ${emails.length} valid emails from JSON string`)
+      } else {
+        console.error(`❌ Invalid emails format: ${typeof body.emails}`)
+        return new Response(JSON.stringify({ error: 'Invalid emails format. Expected array or string' }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          }
+        })
+      }
       
     } else if (contentType.includes('multipart/form-data')) {
       // Handle CSV file upload

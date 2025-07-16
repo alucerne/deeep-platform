@@ -211,7 +211,9 @@ export default function CsvUploader() {
       console.log('👤 User ID:', user_id)
 
       // Submit to batch API
-      const callbackUrl = `${window.location.origin}/api/callback/${user_id}`
+      const callbackUrl = typeof window !== 'undefined' 
+        ? `${window.location.origin}/api/callback/${user_id}`
+        : `${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.deeepverify.com'}/api/callback/${user_id}`
       console.log('🔗 Callback URL:', callbackUrl)
       
       const batchResponse = await fetch(`https://al-api.proxy4smtp.com/audlabapi/${selectedApiKey}/email-validate-batch`, {
