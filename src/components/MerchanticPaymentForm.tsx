@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -29,14 +29,27 @@ export default function MerchanticPaymentForm() {
   const [error, setError] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState<string>('')
 
-  const supabase = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  // Create Supabase client only when environment variables are available
+  const supabase = useMemo(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn('Supabase environment variables not found')
+      return null
+    }
+    
+    return createClient<Database>(supabaseUrl, supabaseAnonKey)
+  }, [])
 
   // Get user email from Supabase session
   useEffect(() => {
     const getUserEmail = async () => {
+      if (!supabase) {
+        console.log('Supabase client not available')
+        return
+      }
+      
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         if (sessionError || !session) {

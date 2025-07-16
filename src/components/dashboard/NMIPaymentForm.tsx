@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
@@ -57,14 +57,27 @@ export default function NMIPaymentForm() {
     }
   })
 
-  const supabase = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  // Create Supabase client only when environment variables are available
+  const supabase = useMemo(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn('Supabase environment variables not found')
+      return null
+    }
+    
+    return createClient<Database>(supabaseUrl, supabaseAnonKey)
+  }, [])
 
   // Fetch API keys on component mount
-  useState(() => {
+  useEffect(() => {
     const fetchApiKeys = async () => {
+      if (!supabase) {
+        setLoadingKeys(false)
+        return
+      }
+      
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         if (sessionError || !session) {
@@ -90,7 +103,7 @@ export default function NMIPaymentForm() {
     }
 
     fetchApiKeys()
-  })
+  }, [supabase])
 
   const handleInputChange = (field: string, value: string) => {
     if (field.includes('.')) {
