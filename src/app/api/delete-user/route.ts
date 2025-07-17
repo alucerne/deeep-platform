@@ -19,7 +19,8 @@ export async function DELETE(req: NextRequest) {
     console.log(`🗑️ Deleting user account for: ${email}`)
 
     // 1. Find the user in Supabase auth
-    const { data: { users }, error: authError } = await supabase.auth.admin.listUsers()
+    const { data, error: authError } = await supabase.auth.admin.listUsers()
+    const users = (data?.users ?? []) as Array<{ id: string; email: string }>
     
     if (authError) {
       console.error('Error listing users:', authError)
