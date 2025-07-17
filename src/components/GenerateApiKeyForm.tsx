@@ -185,7 +185,15 @@ export default function GenerateApiKeyForm() {
         await refreshApiKeys() // Refresh the list
         await fetchCredits() // Refresh credits info
       } else {
-        setResult({ success: false, error: data.error || 'Failed to generate API key' })
+        // Handle specific error cases
+        if (data.code === 'USER_EXISTS_NO_KEY') {
+          setResult({ 
+            success: false, 
+            error: 'This email is already registered with DEEEP. Please contact support to retrieve your existing API key, or try using a different email address.' 
+          })
+        } else {
+          setResult({ success: false, error: data.error || 'Failed to generate API key' })
+        }
       }
     } catch (error) {
       setResult({ 

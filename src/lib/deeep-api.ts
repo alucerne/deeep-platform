@@ -17,28 +17,19 @@ export class DeeepApiError extends Error {
 }
 
 export async function createDeeepUser(email: string): Promise<DeeepNewUserResponse> {
-  const DEEEP_API_URL = 'https://al-api.proxy4smtp.com/audlabserviceusers/newuser'
-  const DEEEP_AUTH_TOKEN = 'audlabY4qjL)129'
-
-  const requestBody: DeeepNewUserRequest = {
-    email,
-    initial_credits: 1000
-  }
-
   try {
-    const response = await fetch(DEEEP_API_URL, {
+    const response = await fetch('/api/create-deeep-user', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${DEEEP_AUTH_TOKEN}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify({ email })
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
+      const errorData = await response.json()
       throw new DeeepApiError(
-        `DEEEP API error: ${response.status} - ${errorText}`,
+        `DEEEP API error: ${response.status} - ${errorData.error || 'Unknown error'}`,
         response.status
       )
     }

@@ -216,14 +216,15 @@ export default function CsvUploader() {
         : `${process.env.NEXT_PUBLIC_SITE_URL || 'https://app.deeepverify.com'}/api/callback/${user_id}`
       console.log('🔗 Callback URL:', callbackUrl)
       
-      const batchResponse = await fetch(`https://al-api.proxy4smtp.com/audlabapi/${selectedApiKey}/email-validate-batch`, {
+      const batchResponse = await fetch('/api/submit-batch', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          callback_url: callbackUrl,
-          items: emails.join(',')
+          api_key: selectedApiKey,
+          emails: emails,
+          callback_url: callbackUrl
         })
       })
 

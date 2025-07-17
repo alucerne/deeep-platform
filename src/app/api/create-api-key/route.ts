@@ -76,18 +76,36 @@ export async function POST(req: NextRequest) {
     let api_key: string | undefined
     let customer_link: string | undefined
 
-    if (deeepRes.ok) {
-      // Extract api_key and customer_link from response
+    // Check for "User exists" message first, regardless of HTTP status
+    if (deeepData.Message === 'User exists') {
+      // User already exists, check if we can extract any useful information
+      console.log('User exists in DEEEP system:', deeepData)
+      
+      // Check if the response contains any API key or customer link information
+      if (deeepData.api_key || deeepData.customer_link) {
+        api_key = deeepData.api_key || deeepData.apiKey || deeepData.key
+        customer_link = deeepData.customer_link || deeepData.customerLink || deeepData.link
+        console.log('Found API key in "User exists" response:', api_key ? api_key.substring(0, 8) + '...' : 'none')
+      } else {
+        // If no API key is provided in the response, we need to handle this differently
+        console.log('User exists but no API key provided in response')
+        
+        return NextResponse.json({ 
+          error: 'This email is already registered with DEEEP. Please contact support to retrieve your existing API key, or try using a different email address.',
+          details: 'The DEEEP system indicates this email already has an account, but we cannot automatically retrieve the API key. Please contact our support team for assistance.',
+          code: 'USER_EXISTS_NO_KEY'
+        }, { status: 400 })
+      }
+    } else if (deeepRes.ok) {
+      // Extract api_key and customer_link from successful response
       api_key = deeepData.api_key || deeepData.apiKey || deeepData.key
       customer_link = deeepData.customer_link || deeepData.customerLink || deeepData.link
-    } else if (deeepData.Message === 'User exists') {
-      // User already exists, but we can't retrieve their API key without a customer_link
-      console.log('User exists but cannot retrieve API key without customer_link')
-      
+    } else {
+      // Handle other HTTP errors
+      console.error('DEEEP API error:', deeepRes.status, deeepData)
       return NextResponse.json({ 
-        error: 'User already exists in DEEEP system but API key cannot be retrieved automatically. Please contact support to get your API key or try creating a new account with a different email.',
-        details: 'The DEEEP API requires a customer_link to retrieve existing user information, which is not available for users created through this interface.'
-      }, { status: 400 })
+        error: `DEEEP API error: ${deeepRes.status} - ${JSON.stringify(deeepData)}` 
+      }, { status: deeepRes.status })
     }
     
     if (!api_key) {
