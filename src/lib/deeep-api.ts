@@ -1,8 +1,3 @@
-interface DeeepNewUserRequest {
-  email: string
-  initial_credits: number
-}
-
 interface DeeepNewUserResponse {
   api_key: string
   customer_link: string
