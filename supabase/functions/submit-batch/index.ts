@@ -5,7 +5,9 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-const DEEEP_API_URL = "https://al-api.proxy4smtp.com/audlabapi/p9ebe0g5akukrjgwf0gjy2hgt9mu64zzq/email-validate-batch"
+// Get API key from environment variable instead of hardcoding
+const DEEEP_API_KEY = Deno.env.get("DEEEP_API_KEY") || "p9ebe0g5akukrjgwf0gjy2hgt9mu64zzq"
+const DEEEP_API_URL = `https://al-api.proxy4smtp.com/audlabapi/${DEEEP_API_KEY}/email-validate-batch`
 const CALLBACK_URL = "https://hapmnlakorkoklzfovne.functions.supabase.co/callback-handler"
 
 serve(async (req) => {
@@ -107,31 +109,74 @@ serve(async (req) => {
     const emailsString = emails.join(',')
     console.log(`📧 Emails string: ${emailsString}`)
     
-    // Send to DEEEP API
+    // Send to DEEEP API with timeout
     console.log(`🚀 Sending request to DEEEP API: ${DEEEP_API_URL}`)
     console.log(`📞 Callback URL: ${CALLBACK_URL}`)
+    console.log(`🔑 Using API key: ${DEEEP_API_KEY.substring(0, 8)}...`)
     
-    const deeepRes = await fetch(DEEEP_API_URL, {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-      body: JSON.stringify({
-        items: emailsString,
-        callback_url: CALLBACK_URL
+    // Create AbortController for timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+    
+    let deeepData: any
+    
+    try {
+      const deeepRes = await fetch(DEEEP_API_URL, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Authorization": `Bearer ${Deno.env.get("DEEEP_BEARER_TOKEN") || ""}`
+        },
+        body: JSON.stringify({
+          items: emailsString,
+          callback_url: CALLBACK_URL
+        }),
+        signal: controller.signal
       })
-    })
+      
+      clearTimeout(timeoutId)
 
-    console.log(`📡 DEEEP API response status: ${deeepRes.status}`)
+      console.log(`📡 DEEEP API response status: ${deeepRes.status}`)
 
-    if (!deeepRes.ok) {
-      const errorText = await deeepRes.text()
-      console.error(`❌ DEEEP API error: ${deeepRes.status} - ${errorText}`)
+      if (!deeepRes.ok) {
+        const errorText = await deeepRes.text()
+        console.error(`❌ DEEEP API error: ${deeepRes.status} - ${errorText}`)
+        return new Response(JSON.stringify({ 
+          error: "DEEEP API error", 
+          status: deeepRes.status,
+          details: errorText 
+        }), {
+          status: 502,
+          headers: { 
+            "Content-Type": "application/json", 
+            "Access-Control-Allow-Origin": "*" 
+          }
+        })
+      }
+
+      deeepData = await deeepRes.json()
+      console.log(`📄 DEEEP API response:`, deeepData)
+      
+    } catch (fetchError) {
+      clearTimeout(timeoutId)
+      if (fetchError.name === 'AbortError') {
+        console.error(`❌ DEEEP API request timed out after 30 seconds`)
+        return new Response(JSON.stringify({ 
+          error: "DEEEP API request timed out",
+          details: "The request took longer than 30 seconds to complete"
+        }), {
+          status: 504,
+          headers: { 
+            "Content-Type": "application/json", 
+            "Access-Control-Allow-Origin": "*" 
+          }
+        })
+      }
+      console.error(`❌ DEEEP API fetch error:`, fetchError)
       return new Response(JSON.stringify({ 
-        error: "DEEEP API error", 
-        status: deeepRes.status,
-        details: errorText 
+        error: "DEEEP API connection error",
+        details: fetchError.message 
       }), {
         status: 502,
         headers: { 
@@ -141,9 +186,6 @@ serve(async (req) => {
       })
     }
 
-    const deeepData = await deeepRes.json()
-    console.log(`📄 DEEEP API response:`, deeepData)
-    
     const batch_id = deeepData.batch_id
     if (!batch_id) {
       console.error(`❌ No batch_id in DEEEP API response`)

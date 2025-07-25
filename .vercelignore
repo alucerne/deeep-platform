@@ -1,14 +1,1 @@
-# Exclude Supabase Edge Functions from Vercel deployment
-supabase/functions/
-supabase/migrations/
-supabase/seed.sql
-supabase/config.toml
-
-# Exclude other files that shouldn't be deployed
-.env.local
-.env.*.local
-*.log
-.DS_Store
-node_modules/
-.next/
-.git/ 
+supabase/ 
