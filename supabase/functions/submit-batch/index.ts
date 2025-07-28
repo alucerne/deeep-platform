@@ -5,251 +5,208 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-// Get API key from environment variable instead of hardcoding
-const DEEEP_API_KEY = Deno.env.get("DEEEP_API_KEY") || "p9ebe0g5akukrjgwf0gjy2hgt9mu64zzq"
-const DEEEP_API_URL = `https://al-api.proxy4smtp.com/audlabapi/${DEEEP_API_KEY}/email-validate-batch`
-const CALLBACK_URL = "https://hapmnlakorkoklzfovne.functions.supabase.co/callback-handler"
+const INSTANT_EMAIL_API_URL = "https://api.instantemail.org/"
 
 serve(async (req) => {
-  console.log(`🔔 submit-batch function called: ${req.method} ${req.url}`)
-  
   // Handle CORS
-  if (req.method === "OPTIONS") {
-    console.log(`✅ CORS preflight request handled`)
-    return new Response("ok", {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
       headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      }
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
     })
   }
 
   // Only allow POST requests
-  if (req.method !== "POST") {
-    console.error(`❌ Method not allowed: ${req.method}`)
-    return new Response(JSON.stringify({ error: "Method not allowed. Only POST requests are supported." }), {
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
       }
     })
   }
 
   try {
-    const contentType = req.headers.get('content-type') || ''
-    console.log(`📝 Content-Type: ${contentType}`)
-    
-    if (!contentType.includes('application/json')) {
-      console.error(`❌ Unsupported content type: ${contentType}`)
-      return new Response(JSON.stringify({ error: "Unsupported content type. Use application/json" }), {
-        status: 400,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        }
-      })
-    }
-
-    // Parse JSON body
-    let body
-    try {
-      body = await req.json()
-      console.log(`📄 JSON body received:`, body)
-    } catch (err) {
-      console.error(`❌ JSON parsing error: ${err.message}`)
-      return new Response(JSON.stringify({ error: "Invalid JSON format in request body" }), {
-        status: 400,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        }
-      })
-    }
-
-    // Validate emails array
-    if (!body.emails || !Array.isArray(body.emails) || body.emails.length === 0) {
-      console.error(`❌ Invalid JSON structure: missing or empty emails array`)
-      return new Response(JSON.stringify({ error: "Invalid JSON format. Expected { \"emails\": [\"email1\", \"email2\"] }" }), {
-        status: 400,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        }
-      })
-    }
-
-    const emails = body.emails.filter((email: any) => {
-      if (typeof email !== 'string') {
-        console.warn(`⚠️ Skipping non-string email: ${email}`)
-        return false
-      }
-      if (email.trim() === '') {
-        console.warn(`⚠️ Skipping empty email`)
-        return false
-      }
-      return true
-    })
-
-    if (emails.length === 0) {
-      console.error(`❌ No valid emails found to process`)
-      return new Response(JSON.stringify({ error: "No valid emails found to validate" }), {
-        status: 400,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        }
-      })
-    }
-
-    console.log(`✅ Processing ${emails.length} valid emails`)
-
-    // Convert emails array to comma-separated string
-    const emailsString = emails.join(',')
-    console.log(`📧 Emails string: ${emailsString}`)
-    
-    // Send to DEEEP API with timeout
-    console.log(`🚀 Sending request to DEEEP API: ${DEEEP_API_URL}`)
-    console.log(`📞 Callback URL: ${CALLBACK_URL}`)
-    console.log(`🔑 Using API key: ${DEEEP_API_KEY.substring(0, 8)}...`)
-    
-    // Create AbortController for timeout
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
-    
-    let deeepData: any
-    
-    try {
-      const deeepRes = await fetch(DEEEP_API_URL, {
-        method: "POST",
+    // Get API key from Authorization header
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Authorization header with Bearer token required' }), {
+        status: 401,
         headers: { 
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          "Authorization": `Bearer ${Deno.env.get("DEEEP_BEARER_TOKEN") || ""}`
-        },
-        body: JSON.stringify({
-          items: emailsString,
-          callback_url: CALLBACK_URL
-        }),
-        signal: controller.signal
-      })
-      
-      clearTimeout(timeoutId)
-
-      console.log(`📡 DEEEP API response status: ${deeepRes.status}`)
-
-      if (!deeepRes.ok) {
-        const errorText = await deeepRes.text()
-        console.error(`❌ DEEEP API error: ${deeepRes.status} - ${errorText}`)
-        return new Response(JSON.stringify({ 
-          error: "DEEEP API error", 
-          status: deeepRes.status,
-          details: errorText 
-        }), {
-          status: 502,
-          headers: { 
-            "Content-Type": "application/json", 
-            "Access-Control-Allow-Origin": "*" 
-          }
-        })
-      }
-
-      deeepData = await deeepRes.json()
-      console.log(`📄 DEEEP API response:`, deeepData)
-      
-    } catch (fetchError) {
-      clearTimeout(timeoutId)
-      if (fetchError.name === 'AbortError') {
-        console.error(`❌ DEEEP API request timed out after 30 seconds`)
-        return new Response(JSON.stringify({ 
-          error: "DEEEP API request timed out",
-          details: "The request took longer than 30 seconds to complete"
-        }), {
-          status: 504,
-          headers: { 
-            "Content-Type": "application/json", 
-            "Access-Control-Allow-Origin": "*" 
-          }
-        })
-      }
-      console.error(`❌ DEEEP API fetch error:`, fetchError)
-      return new Response(JSON.stringify({ 
-        error: "DEEEP API connection error",
-        details: fetchError.message 
-      }), {
-        status: 502,
-        headers: { 
-          "Content-Type": "application/json", 
-          "Access-Control-Allow-Origin": "*" 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
         }
       })
     }
 
-    const batch_id = deeepData.batch_id
-    if (!batch_id) {
-      console.error(`❌ No batch_id in DEEEP API response`)
-      return new Response(JSON.stringify({ 
-        error: "No batch_id received from DEEEP API",
-        response: deeepData
-      }), {
-        status: 502,
-        headers: { 
-          "Content-Type": "application/json", 
-          "Access-Control-Allow-Origin": "*" 
-        }
-      })
-    }
+    const apiKey = authHeader.replace('Bearer ', '')
 
-    console.log(`✅ Received batch_id: ${batch_id}`)
+    // Look up user by API key
+    const { data: user, error: userError } = await supabase
+      .from('api_users')
+      .select('id, user_email, credits')
+      .eq('api_key', apiKey)
+      .maybeSingle()
 
-    // Store in email_batches table
-    console.log(`💾 Storing batch_id in database`)
-    const { error: dbError } = await supabase
-      .from("email_batches")
-      .insert([{ 
-        batch_id, 
-        status: "processing" 
-      }])
-
-    if (dbError) {
-      console.error(`❌ Database insert error:`, dbError)
-      return new Response(JSON.stringify({ 
-        error: "Database insert failed", 
-        details: dbError.message 
-      }), {
+    if (userError) {
+      console.error('Error looking up user:', userError)
+      return new Response(JSON.stringify({ error: 'Database error' }), {
         status: 500,
         headers: { 
-          "Content-Type": "application/json", 
-          "Access-Control-Allow-Origin": "*" 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
         }
       })
     }
 
-    console.log(`✅ Successfully stored batch_id in database`)
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Invalid API key' }), {
+        status: 401,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
 
-    return new Response(JSON.stringify({ 
-      success: true,
-      batch_id,
-      message: "Batch submitted successfully"
+    // Parse request body
+    const body = await req.json()
+    const { emails } = body
+
+    // Validate emails array
+    if (!emails || !Array.isArray(emails) || emails.length === 0) {
+      return new Response(JSON.stringify({ error: 'emails array is required and must not be empty' }), {
+        status: 400,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
+
+    // Check if user has enough credits
+    if (user.credits < emails.length) {
+      return new Response(JSON.stringify({ 
+        error: 'Insufficient credits',
+        required: emails.length,
+        available: user.credits
+      }), {
+        status: 402,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
+
+    // Generate webhook URL for this batch
+    const webhookUrl = `${supabaseUrl.replace('.supabase.co', '.functions.supabase.co')}/webhook-handler`
+
+    // Send request to instantemail.org
+    const instantEmailPayload = {
+      emails: emails,
+      webhook_url: webhookUrl,
+      user_id: user.id
+    }
+
+    console.log('Sending to instantemail.org:', instantEmailPayload)
+
+    const instantEmailResponse = await fetch(INSTANT_EMAIL_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(instantEmailPayload)
+    })
+
+    if (!instantEmailResponse.ok) {
+      console.error('InstantEmail API error:', await instantEmailResponse.text())
+      return new Response(JSON.stringify({ error: 'Failed to submit to email service' }), {
+        status: 502,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
+
+    const instantEmailData = await instantEmailResponse.json()
+    const requestId = instantEmailData.request_id
+
+    if (!requestId) {
+      return new Response(JSON.stringify({ error: 'No request_id returned from email service' }), {
+        status: 502,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
+
+    // Store batch metadata in email_batches table
+    const { data: batchData, error: batchError } = await supabase
+      .from('email_batches')
+      .insert({
+        api_user_id: user.id,
+        request_id: requestId,
+        submitted_emails: emails,
+        status: 'processing'
+      })
+      .select('id, request_id, status')
+      .single()
+
+    if (batchError) {
+      console.error('Error storing batch:', batchError)
+      return new Response(JSON.stringify({ error: 'Failed to store batch metadata' }), {
+        status: 500,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
+
+    // Deduct credits from user
+    const newCredits = user.credits - emails.length
+    const { error: updateError } = await supabase
+      .from('api_users')
+      .update({ credits: newCredits })
+      .eq('id', user.id)
+
+    if (updateError) {
+      console.error('Error updating credits:', updateError)
+      // Note: We don't fail here since the batch was already submitted
+    }
+
+    // Return success response
+    return new Response(JSON.stringify({
+      request_id: requestId,
+      batch_id: batchData.id,
+      emails_submitted: emails.length,
+      credits_deducted: emails.length,
+      remaining_credits: newCredits,
+      status: 'processing',
+      message: 'Batch submitted successfully'
     }), {
       status: 200,
       headers: { 
-        "Content-Type": "application/json", 
-        "Access-Control-Allow-Origin": "*" 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
       }
     })
 
   } catch (error) {
-    console.error(`❌ Unexpected error:`, error)
-    return new Response(JSON.stringify({ 
-      error: "Internal server error",
-      details: error.message 
-    }), {
+    console.error('Unexpected error:', error)
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 
-        "Content-Type": "application/json", 
-        "Access-Control-Allow-Origin": "*" 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
       }
     })
   }
