@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useRouter } from 'next/navigation'
-import { Mail, Zap, Copy, ExternalLink, CreditCard } from 'lucide-react'
+import { Mail, Zap, Copy, ExternalLink, CreditCard, RefreshCw } from 'lucide-react'
 
 interface DeeepApiKey {
   id: string
@@ -119,42 +119,16 @@ export default function ApiKeysList() {
         }
 
         // Fetch InstantEmail API keys
-        const instantEmailResponse = await fetch('https://hapmnlakorkoklzfovne.functions.supabase.co/generate-key', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            user_email: session.user.email
-          })
-        })
+        const { data: instantEmailKeys, error: instantEmailError } = await supabase
+          .from('api_users')
+          .select('*')
+          .eq('user_email', session.user.email)
+          .order('created_at', { ascending: false })
 
-        if (instantEmailResponse.ok) {
-          const instantEmailData = await instantEmailResponse.json()
-          // If user already exists, fetch their keys from the database
-          if (instantEmailData.error && instantEmailData.error.includes('already exists')) {
-            // Fetch all InstantEmail API keys for this user
-            const { data: instantEmailKeys, error: fetchError } = await supabase
-              .from('api_users')
-              .select('*')
-              .eq('user_email', session.user.email)
-              .order('created_at', { ascending: false })
-
-            if (!fetchError && instantEmailKeys) {
-              setInstantEmailApiKeys(instantEmailKeys)
-            }
-          } else if (instantEmailData.api_key) {
-            // New key was created
-            setInstantEmailApiKeys([{
-              id: instantEmailData.api_key,
-              user_email: session.user.email || '',
-              api_key: instantEmailData.api_key,
-              credits: instantEmailData.credits || 0,
-              created_at: new Date().toISOString()
-            }])
-          }
+        if (instantEmailError) {
+          console.error('Failed to fetch InstantEmail API keys:', instantEmailError)
         } else {
-          console.error('Failed to fetch InstantEmail API keys')
+          setInstantEmailApiKeys(instantEmailKeys || [])
         }
 
       } catch (error) {
@@ -167,22 +141,94 @@ export default function ApiKeysList() {
     fetchApiKeys()
   }, [supabase])
 
+  // Refresh API keys function
+  const refreshApiKeys = useCallback(async () => {
+    setLoadingKeys(true)
+    try {
+      if (!supabase) {
+        setLoadingKeys(false)
+        return
+      }
+      
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError || !session) {
+        console.error('Not authenticated')
+        setLoadingKeys(false)
+        return
+      }
+
+      // Fetch DEEEP API keys
+      const deeepResponse = await fetch('/api/get-api-keys', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      })
+
+      if (deeepResponse.ok) {
+        const deeepData = await deeepResponse.json()
+        setDeeepApiKeys(deeepData.apiKeys || [])
+      } else {
+        console.error('Failed to fetch DEEEP API keys')
+      }
+
+      // Fetch InstantEmail API keys
+      const { data: instantEmailKeys, error: instantEmailError } = await supabase
+        .from('api_users')
+        .select('*')
+        .eq('user_email', session.user.email)
+        .order('created_at', { ascending: false })
+
+      if (instantEmailError) {
+        console.error('Failed to fetch InstantEmail API keys:', instantEmailError)
+      } else {
+        setInstantEmailApiKeys(instantEmailKeys || [])
+      }
+
+    } catch (error) {
+      console.error('Error refreshing API keys:', error)
+    } finally {
+      setLoadingKeys(false)
+    }
+  }, [supabase])
+
   // Fetch credits on component mount
   useEffect(() => {
     fetchCreditsInfo()
   }, [fetchCreditsInfo])
+
+  // Refresh API keys when page becomes visible (user returns from generate page)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        refreshApiKeys()
+      }
+    }
+
+    const handleFocus = () => {
+      refreshApiKeys()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [refreshApiKeys])
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
   }
 
   const maskApiKey = (apiKey: string) => {
-    return apiKey.length > 6 ? `${apiKey.substring(0, 6)}•••` : apiKey
+    return apiKey.length > 8 ? `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}` : apiKey
   }
 
   const getCreditsForDeeepApiKey = (apiKey: string) => {
     const creditInfo = creditsList.find(credit => credit.api_key === apiKey)
-    return creditInfo?.credits || 0
+    return creditInfo ? creditInfo.credits : 'N/A'
   }
 
   const handleAddCredits = () => {
@@ -201,8 +247,12 @@ export default function ApiKeysList() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Your API Keys</CardTitle>
+        <Button onClick={refreshApiKeys} size="sm" variant="outline">
+          <RefreshCw className="h-4 w-4 mr-1" />
+          Refresh
+        </Button>
       </CardHeader>
       <CardContent>
         {loadingKeys ? (
