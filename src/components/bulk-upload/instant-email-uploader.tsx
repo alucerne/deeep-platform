@@ -12,9 +12,11 @@ import { Upload, FileText, CheckCircle, XCircle, AlertCircle } from 'lucide-reac
 interface UploadState {
   isUploading: boolean;
   isProcessing: boolean;
+  isSubmitting: boolean;
   fileName: string | null;
   fileSize: number | null;
   parseResult: any | null;
+  submitResult: any | null;
   error: string | null;
   success: string | null;
 }
@@ -23,9 +25,11 @@ export default function InstantEmailUploader() {
   const [uploadState, setUploadState] = useState<UploadState>({
     isUploading: false,
     isProcessing: false,
+    isSubmitting: false,
     fileName: null,
     fileSize: null,
     parseResult: null,
+    submitResult: null,
     error: null,
     success: null
   });
@@ -42,7 +46,8 @@ export default function InstantEmailUploader() {
       isUploading: true,
       error: null,
       success: null,
-      parseResult: null
+      parseResult: null,
+      submitResult: null
     }));
 
     try {
@@ -98,25 +103,58 @@ export default function InstantEmailUploader() {
 
     setUploadState(prev => ({
       ...prev,
-      isProcessing: true,
-      error: null
+      isSubmitting: true,
+      error: null,
+      submitResult: null
     }));
 
     try {
-      // TODO: Implement API call to submit batch
-      // This will be implemented in the next milestone
-      console.log('Submitting batch:', uploadState.parseResult.emails);
-      
+      // Get API key from localStorage or prompt user
+      const apiKey = localStorage.getItem('instant_email_api_key');
+      if (!apiKey) {
+        const userApiKey = prompt('Please enter your InstantEmail API key:');
+        if (!userApiKey) {
+          setUploadState(prev => ({
+            ...prev,
+            isSubmitting: false,
+            error: 'API key is required to submit batch'
+          }));
+          return;
+        }
+        localStorage.setItem('instant_email_api_key', userApiKey);
+      }
+
+      const currentApiKey = apiKey || localStorage.getItem('instant_email_api_key');
+
+      // Submit batch to API
+      const response = await fetch('https://hapmnlakorkoklzfovne.functions.supabase.co/submit-csv-batch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          api_key: currentApiKey,
+          emails: uploadState.parseResult.emails
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to submit batch');
+      }
+
       setUploadState(prev => ({
         ...prev,
-        isProcessing: false,
-        success: `Batch submitted successfully! ${uploadState.parseResult.emails.length} emails queued for processing.`
+        isSubmitting: false,
+        submitResult: result,
+        success: `Batch submitted successfully! Request ID: ${result.request_id}. Estimated processing time: ${result.estimated_time_minutes} minutes.`
       }));
 
     } catch (error) {
       setUploadState(prev => ({
         ...prev,
-        isProcessing: false,
+        isSubmitting: false,
         error: error instanceof Error ? error.message : 'Failed to submit batch'
       }));
     }
@@ -126,9 +164,11 @@ export default function InstantEmailUploader() {
     setUploadState({
       isUploading: false,
       isProcessing: false,
+      isSubmitting: false,
       fileName: null,
       fileSize: null,
       parseResult: null,
+      submitResult: null,
       error: null,
       success: null
     });
@@ -166,7 +206,7 @@ export default function InstantEmailUploader() {
               accept=".csv,text/csv"
               onChange={handleFileSelect}
               className="hidden"
-              disabled={uploadState.isUploading || uploadState.isProcessing}
+              disabled={uploadState.isUploading || uploadState.isProcessing || uploadState.isSubmitting}
             />
             <div className="space-y-2">
               <FileText className="h-12 w-12 mx-auto text-gray-400" />
@@ -184,7 +224,7 @@ export default function InstantEmailUploader() {
               )}
               <Button
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploadState.isUploading || uploadState.isProcessing}
+                disabled={uploadState.isUploading || uploadState.isProcessing || uploadState.isSubmitting}
                 variant="outline"
               >
                 Select File
@@ -193,17 +233,25 @@ export default function InstantEmailUploader() {
           </div>
 
           {/* Progress Indicators */}
-          {(uploadState.isUploading || uploadState.isProcessing) && (
+          {(uploadState.isUploading || uploadState.isProcessing || uploadState.isSubmitting) && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span>
-                  {uploadState.isUploading ? 'Uploading file...' : 'Processing emails...'}
+                  {uploadState.isUploading ? 'Uploading file...' : 
+                   uploadState.isProcessing ? 'Processing emails...' : 
+                   'Submitting batch...'}
                 </span>
                 <span className="text-gray-500">
-                  {uploadState.isUploading ? 'Reading file' : 'Parsing CSV'}
+                  {uploadState.isUploading ? 'Reading file' : 
+                   uploadState.isProcessing ? 'Parsing CSV' : 
+                   'Sending to API'}
                 </span>
               </div>
-              <Progress value={uploadState.isUploading ? 50 : 100} className="w-full" />
+              <Progress value={
+                uploadState.isUploading ? 33 : 
+                uploadState.isProcessing ? 66 : 
+                100
+              } className="w-full" />
             </div>
           )}
 
@@ -279,19 +327,48 @@ export default function InstantEmailUploader() {
                   </div>
                 )}
 
+                {/* Submit Results */}
+                {uploadState.submitResult && (
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Batch Submission Results:</h4>
+                    <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium">Request ID:</span>
+                        <span className="text-sm text-gray-600 font-mono">{uploadState.submitResult.request_id}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium">Emails Submitted:</span>
+                        <span className="text-sm text-gray-600">{uploadState.submitResult.emails_submitted}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium">Credits Deducted:</span>
+                        <span className="text-sm text-gray-600">{uploadState.submitResult.credits_deducted}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium">Remaining Credits:</span>
+                        <span className="text-sm text-gray-600">{uploadState.submitResult.remaining_credits}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium">Estimated Time:</span>
+                        <span className="text-sm text-gray-600">{uploadState.submitResult.estimated_time_minutes} minutes</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Action Buttons */}
                 <div className="flex gap-2">
                   <Button
                     onClick={handleSubmitBatch}
-                    disabled={!uploadState.parseResult.emails.length || uploadState.isProcessing}
+                    disabled={!uploadState.parseResult.emails.length || uploadState.isSubmitting}
                     className="flex-1"
                   >
-                    {uploadState.isProcessing ? 'Submitting...' : 'Submit Batch'}
+                    {uploadState.isSubmitting ? 'Submitting...' : 'Submit Batch'}
                   </Button>
                   <Button
                     onClick={handleReset}
                     variant="outline"
-                    disabled={uploadState.isProcessing}
+                    disabled={uploadState.isSubmitting}
                   >
                     Reset
                   </Button>
