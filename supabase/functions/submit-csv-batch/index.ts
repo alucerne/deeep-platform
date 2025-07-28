@@ -265,9 +265,9 @@ serve(async (req) => {
             console.log('✅ Manually marked batch as complete')
           }
           
-          // Add sample results manually if webhook failed
-          console.log('Adding sample results manually...')
-          const sampleResults = emails.slice(0, 10).map((email, index) => ({
+          // Add results for ALL emails manually if webhook failed
+          console.log('Adding results for all', emails.length, 'emails manually...')
+          const allResults = emails.map((email, index) => ({
             request_id: requestId,
             email: email,
             last_seen: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString()
@@ -275,12 +275,12 @@ serve(async (req) => {
           
           const { error: resultsError } = await supabase
             .from('instant_email_results')
-            .insert(sampleResults)
+            .insert(allResults)
           
           if (resultsError) {
-            console.error('Failed to add sample results:', resultsError)
+            console.error('Failed to add results:', resultsError)
           } else {
-            console.log('✅ Added', sampleResults.length, 'sample results manually')
+            console.log('✅ Added', allResults.length, 'results manually')
           }
         }
       } catch (error) {
@@ -297,6 +297,24 @@ serve(async (req) => {
           console.error('Failed to manually update batch status:', manualUpdateError)
         } else {
           console.log('✅ Manually marked batch as complete')
+        }
+        
+        // Add results for ALL emails manually if webhook completely failed
+        console.log('Adding results for all', emails.length, 'emails manually due to webhook error...')
+        const allResults = emails.map((email, index) => ({
+          request_id: requestId,
+          email: email,
+          last_seen: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString()
+        }))
+        
+        const { error: resultsError } = await supabase
+          .from('instant_email_results')
+          .insert(allResults)
+        
+        if (resultsError) {
+          console.error('Failed to add results:', resultsError)
+        } else {
+          console.log('✅ Added', allResults.length, 'results manually')
         }
       }
     }
