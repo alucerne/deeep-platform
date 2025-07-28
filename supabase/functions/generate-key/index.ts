@@ -13,7 +13,7 @@ serve(async (req) => {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       },
     })
   }
@@ -104,13 +104,12 @@ serve(async (req) => {
       })
     }
 
-    // Return success response
     return new Response(JSON.stringify({
+      success: true,
       api_key: newUser.api_key,
-      credits: newUser.credits,
-      message: 'API key generated successfully'
+      credits: newUser.credits
     }), {
-      status: 200,
+      status: 201,
       headers: { 
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*'
@@ -118,7 +117,7 @@ serve(async (req) => {
     })
 
   } catch (error) {
-    console.error('Unexpected error:', error)
+    console.error('Error in generate-key function:', error)
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 
