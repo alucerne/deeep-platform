@@ -9,6 +9,29 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 // In production, this would be a real API endpoint
 const SIMULATE_INSTANT_EMAIL_API = true
 
+// Helper function to batch insert results
+async function batchInsertResults(supabase: any, results: any[], batchSize: number = 100) {
+  console.log(`Inserting ${results.length} results in batches of ${batchSize}`)
+  
+  for (let i = 0; i < results.length; i += batchSize) {
+    const batch = results.slice(i, i + batchSize)
+    console.log(`Inserting batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(results.length / batchSize)} with ${batch.length} results`)
+    
+    const { error: batchError } = await supabase
+      .from('instant_email_results')
+      .insert(batch)
+    
+    if (batchError) {
+      console.error(`Failed to insert batch ${Math.floor(i / batchSize) + 1}:`, batchError)
+      throw batchError
+    }
+    
+    console.log(`✅ Successfully inserted batch ${Math.floor(i / batchSize) + 1}`)
+  }
+  
+  console.log(`✅ All ${results.length} results inserted successfully`)
+}
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -273,14 +296,11 @@ serve(async (req) => {
             last_seen: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString()
           }))
           
-          const { error: resultsError } = await supabase
-            .from('instant_email_results')
-            .insert(allResults)
-          
-          if (resultsError) {
+          try {
+            await batchInsertResults(supabase, allResults)
+            console.log('✅ Added', allResults.length, 'results manually using batched insert')
+          } catch (resultsError) {
             console.error('Failed to add results:', resultsError)
-          } else {
-            console.log('✅ Added', allResults.length, 'results manually')
           }
         }
       } catch (error) {
@@ -307,14 +327,11 @@ serve(async (req) => {
           last_seen: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString()
         }))
         
-        const { error: resultsError } = await supabase
-          .from('instant_email_results')
-          .insert(allResults)
-        
-        if (resultsError) {
+        try {
+          await batchInsertResults(supabase, allResults)
+          console.log('✅ Added', allResults.length, 'results manually using batched insert')
+        } catch (resultsError) {
           console.error('Failed to add results:', resultsError)
-        } else {
-          console.log('✅ Added', allResults.length, 'results manually')
         }
       }
     }
