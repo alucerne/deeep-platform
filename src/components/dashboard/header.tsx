@@ -38,7 +38,7 @@ export default function Header() {
   return (
     <header className="w-full border-b px-6 py-4 bg-white">
       <div className="flex items-center justify-between">
-        <div className="text-xl font-semibold">DEEEP Dashboard</div>
+        <div className="text-xl font-semibold">Email Validation Platform</div>
         <Button
           onClick={handleLogout}
           variant="outline"

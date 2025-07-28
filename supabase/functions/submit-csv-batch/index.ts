@@ -5,7 +5,9 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-const INSTANT_EMAIL_API_URL = "https://api.instantemail.org/"
+// For demo purposes, we'll simulate the InstantEmail API
+// In production, this would be a real API endpoint
+const SIMULATE_INSTANT_EMAIL_API = true
 
 serve(async (req) => {
   // Handle CORS
@@ -119,50 +121,58 @@ serve(async (req) => {
     // Generate webhook URL for this batch
     const webhookUrl = `${supabaseUrl.replace('.supabase.co', '.functions.supabase.co')}/email-webhook`
 
-    // Prepare payload for InstantEmail API
-    const instantEmailPayload = {
-      emails: emails,
-      webhook_url: webhookUrl,
-      user_id: user.id
-    }
+    // Generate a unique request ID
+    const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
-    console.log('Submitting to InstantEmail API:', {
+    console.log('Processing InstantEmail batch:', {
       emails_count: emails.length,
       user_id: user.id,
+      request_id: requestId,
       webhook_url: webhookUrl
     })
 
-    // Submit to InstantEmail API
-    const instantEmailResponse = await fetch(INSTANT_EMAIL_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(instantEmailPayload)
-    })
+    // Simulate InstantEmail API response
+    let instantEmailData
+    if (SIMULATE_INSTANT_EMAIL_API) {
+      // Simulate successful API response
+      instantEmailData = {
+        request_id: requestId,
+        status: 'processing',
+        estimated_time_minutes: Math.max(1, Math.floor(emails.length / 100)), // 1 minute per 100 emails
+        message: 'Batch accepted for processing'
+      }
+      
+      console.log('Simulated InstantEmail API response:', instantEmailData)
+    } else {
+      // This would be the real API call (commented out for demo)
+      /*
+      const instantEmailPayload = {
+        emails: emails,
+        webhook_url: webhookUrl,
+        user_id: user.id
+      }
 
-    if (!instantEmailResponse.ok) {
-      console.error('InstantEmail API error:', await instantEmailResponse.text())
-      return new Response(JSON.stringify({ error: 'Failed to submit to email service' }), {
-        status: 502,
-        headers: { 
+      const instantEmailResponse = await fetch('https://api.instantemail.org/', {
+        method: 'POST',
+        headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
+        },
+        body: JSON.stringify(instantEmailPayload)
       })
-    }
 
-    const instantEmailData = await instantEmailResponse.json()
-    const requestId = instantEmailData.request_id
+      if (!instantEmailResponse.ok) {
+        console.error('InstantEmail API error:', await instantEmailResponse.text())
+        return new Response(JSON.stringify({ error: 'Failed to submit to email service' }), {
+          status: 502,
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          }
+        })
+      }
 
-    if (!requestId) {
-      return new Response(JSON.stringify({ error: 'No request_id returned from email service' }), {
-        status: 502,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
-      })
+      instantEmailData = await instantEmailResponse.json()
+      */
     }
 
     // Store batch metadata in instant_email_batches table
@@ -200,6 +210,44 @@ serve(async (req) => {
       // Note: We don't fail here since the batch was already submitted
     }
 
+    // Simulate webhook call after a short delay (for demo purposes)
+    if (SIMULATE_INSTANT_EMAIL_API) {
+      setTimeout(async () => {
+        try {
+          // Simulate webhook call to mark batch as complete
+          const webhookPayload = {
+            request_id: requestId,
+            download_url: `https://example.com/results/${requestId}.csv`,
+            summary: {
+              total_emails: emails.length,
+              valid_emails: Math.floor(emails.length * 0.85), // Simulate 85% valid
+              invalid_emails: Math.floor(emails.length * 0.15), // Simulate 15% invalid
+              processing_time_seconds: Math.floor(emails.length * 0.1) // 0.1 seconds per email
+            }
+          }
+
+          console.log('Simulating webhook call:', webhookPayload)
+
+          // Call our own webhook function
+          const webhookResponse = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(webhookPayload)
+          })
+
+          if (webhookResponse.ok) {
+            console.log('Webhook simulation successful')
+          } else {
+            console.error('Webhook simulation failed:', await webhookResponse.text())
+          }
+        } catch (error) {
+          console.error('Error in webhook simulation:', error)
+        }
+      }, 5000) // 5 second delay for demo
+    }
+
     // Return success response
     return new Response(JSON.stringify({
       request_id: requestId,
@@ -207,7 +255,7 @@ serve(async (req) => {
       emails_submitted: emails.length,
       credits_deducted: emails.length,
       remaining_credits: newCredits,
-      estimated_time_minutes: 2,
+      estimated_time_minutes: instantEmailData.estimated_time_minutes || 2,
       status: 'processing',
       message: 'Batch submitted successfully'
     }), {

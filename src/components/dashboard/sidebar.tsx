@@ -20,12 +20,12 @@ const navigation = [
     icon: LayoutDashboard,
   },
   {
-    title: "Generate API",
+    title: "Generate API Keys",
     href: "/generate",
     icon: PlusSquare,
   },
   {
-    title: "Buy Credits",
+    title: "Purchase Credits",
     href: "/buy-credits",
     icon: Wallet,
   },
@@ -40,7 +40,7 @@ const navigation = [
     icon: History,
   },
   {
-    title: "Bulk Upload",
+    title: "Email Validation",
     href: "/bulk-upload",
     icon: Upload,
   },

@@ -5,13 +5,23 @@ import { createClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { useRouter } from 'next/navigation'
+import { Mail, Zap, Copy, ExternalLink, CreditCard } from 'lucide-react'
 
-interface ApiKey {
+interface DeeepApiKey {
   id: string
   email: string
   api_key: string
   customer_link: string | null
+  created_at: string
+}
+
+interface InstantEmailApiKey {
+  id: string
+  user_email: string
+  api_key: string
+  credits: number
   created_at: string
 }
 
@@ -24,7 +34,8 @@ interface CreditInfo {
 
 export default function ApiKeysList() {
   const router = useRouter()
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
+  const [deeepApiKeys, setDeeepApiKeys] = useState<DeeepApiKey[]>([])
+  const [instantEmailApiKeys, setInstantEmailApiKeys] = useState<InstantEmailApiKey[]>([])
   const [loadingKeys, setLoadingKeys] = useState(true)
   const [creditsList, setCreditsList] = useState<CreditInfo[]>([])
   const [loadingCreditsInfo, setLoadingCreditsInfo] = useState(true)
@@ -41,7 +52,7 @@ export default function ApiKeysList() {
     return createClient<Database>(supabaseUrl, supabaseAnonKey)
   }, [])
 
-  // Fetch credits function
+  // Fetch credits function for DEEEP API keys
   const fetchCreditsInfo = useCallback(async () => {
     try {
       if (!supabase) {
@@ -93,18 +104,59 @@ export default function ApiKeysList() {
           return
         }
 
-        const response = await fetch('/api/get-api-keys', {
+        // Fetch DEEEP API keys
+        const deeepResponse = await fetch('/api/get-api-keys', {
           headers: {
             'Authorization': `Bearer ${session.access_token}`
           }
         })
 
-        if (response.ok) {
-          const data = await response.json()
-          setApiKeys(data.apiKeys || [])
+        if (deeepResponse.ok) {
+          const deeepData = await deeepResponse.json()
+          setDeeepApiKeys(deeepData.apiKeys || [])
         } else {
-          console.error('Failed to fetch API keys')
+          console.error('Failed to fetch DEEEP API keys')
         }
+
+        // Fetch InstantEmail API keys
+        const instantEmailResponse = await fetch('https://hapmnlakorkoklzfovne.functions.supabase.co/generate-key', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_email: session.user.email
+          })
+        })
+
+        if (instantEmailResponse.ok) {
+          const instantEmailData = await instantEmailResponse.json()
+          // If user already exists, fetch their keys from the database
+          if (instantEmailData.error && instantEmailData.error.includes('already exists')) {
+            // Fetch all InstantEmail API keys for this user
+            const { data: instantEmailKeys, error: fetchError } = await supabase
+              .from('api_users')
+              .select('*')
+              .eq('user_email', session.user.email)
+              .order('created_at', { ascending: false })
+
+            if (!fetchError && instantEmailKeys) {
+              setInstantEmailApiKeys(instantEmailKeys)
+            }
+          } else if (instantEmailData.api_key) {
+            // New key was created
+            setInstantEmailApiKeys([{
+              id: instantEmailData.api_key,
+              user_email: session.user.email || '',
+              api_key: instantEmailData.api_key,
+              credits: instantEmailData.credits || 0,
+              created_at: new Date().toISOString()
+            }])
+          }
+        } else {
+          console.error('Failed to fetch InstantEmail API keys')
+        }
+
       } catch (error) {
         console.error('Error fetching API keys:', error)
       } finally {
@@ -128,7 +180,7 @@ export default function ApiKeysList() {
     return apiKey.length > 6 ? `${apiKey.substring(0, 6)}•••` : apiKey
   }
 
-  const getCreditsForApiKey = (apiKey: string) => {
+  const getCreditsForDeeepApiKey = (apiKey: string) => {
     const creditInfo = creditsList.find(credit => credit.api_key === apiKey)
     return creditInfo?.credits || 0
   }
@@ -136,6 +188,16 @@ export default function ApiKeysList() {
   const handleAddCredits = () => {
     router.push('/dashboard/credits')
   }
+
+  const handleGenerateDeeepKey = () => {
+    router.push('/generate')
+  }
+
+  const handleGenerateInstantEmailKey = () => {
+    router.push('/generate')
+  }
+
+  const totalApiKeys = deeepApiKeys.length + instantEmailApiKeys.length
 
   return (
     <Card>
@@ -151,89 +213,204 @@ export default function ApiKeysList() {
             </svg>
             <span className="ml-2 text-gray-600">Loading API keys...</span>
           </div>
-        ) : apiKeys.length === 0 ? (
+        ) : totalApiKeys === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
             </svg>
             <p>No API keys generated yet.</p>
             <p className="text-sm">Generate your first API key to get started.</p>
+            <div className="mt-4 space-x-2">
+              <Button onClick={handleGenerateDeeepKey} size="sm">
+                Generate DEEEP Key
+              </Button>
+              <Button onClick={handleGenerateInstantEmailKey} size="sm" variant="outline">
+                Generate InstantEmail Key
+              </Button>
+            </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            {apiKeys.map((apiKey) => (
-              <div key={apiKey.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <span className="text-sm font-medium text-gray-900">{apiKey.email}</span>
-                          <span className="text-xs text-gray-500">
-                            {new Date(apiKey.created_at).toLocaleDateString()}
-                          </span>
+          <div className="space-y-6">
+            {/* DEEEP API Keys Section */}
+            {deeepApiKeys.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Mail className="h-5 w-5 text-blue-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">DEEEP Validation API Keys</h3>
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                    {deeepApiKeys.length} key{deeepApiKeys.length !== 1 ? 's' : ''}
+                  </Badge>
+                </div>
+                
+                <div className="space-y-4">
+                  {deeepApiKeys.map((apiKey) => (
+                    <div key={apiKey.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-4">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <span className="text-sm font-medium text-gray-900">{apiKey.email}</span>
+                                <span className="text-xs text-gray-500">
+                                  {new Date(apiKey.created_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-sm font-medium text-gray-700">API Key:</span>
+                                  <code className="text-sm bg-gray-100 px-2 py-1 rounded font-mono">
+                                    {maskApiKey(apiKey.api_key)}
+                                  </code>
+                                  <button
+                                    onClick={() => copyToClipboard(apiKey.api_key)}
+                                    className="text-xs text-indigo-600 hover:text-indigo-500 underline flex items-center gap-1"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                    Copy
+                                  </button>
+                                </div>
+                                
+                                {apiKey.customer_link && (
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-sm font-medium text-gray-700">Customer Link:</span>
+                                    <a 
+                                      href={apiKey.customer_link}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm text-indigo-600 hover:text-indigo-500 underline truncate max-w-xs flex items-center gap-1"
+                                    >
+                                      {apiKey.customer_link}
+                                      <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                    <button
+                                      onClick={() => copyToClipboard(apiKey.customer_link!)}
+                                      className="text-xs text-indigo-600 hover:text-indigo-500 underline flex items-center gap-1"
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                      Copy
+                                    </button>
+                                  </div>
+                                )}
+                                
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-sm font-medium text-gray-700">Credits:</span>
+                                  {loadingCreditsInfo ? (
+                                    <span className="text-sm text-gray-500">Loading...</span>
+                                  ) : (
+                                    <p className="text-sm text-green-700 font-medium flex items-center gap-1">
+                                      <CreditCard className="h-3 w-3" />
+                                      {getCreditsForDeeepApiKey(apiKey.api_key)} 💳
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                         
-                        <div className="space-y-2">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm font-medium text-gray-700">API Key:</span>
-                            <code className="text-sm bg-gray-100 px-2 py-1 rounded font-mono">
-                              {maskApiKey(apiKey.api_key)}
-                            </code>
-                            <button
-                              onClick={() => copyToClipboard(apiKey.api_key)}
-                              className="text-xs text-indigo-600 hover:text-indigo-500 underline"
-                            >
-                              Copy
-                            </button>
-                          </div>
-                          
-                          {apiKey.customer_link && (
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm font-medium text-gray-700">Customer Link:</span>
-                              <a 
-                                href={apiKey.customer_link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm text-indigo-600 hover:text-indigo-500 underline truncate max-w-xs"
-                              >
-                                {apiKey.customer_link}
-                              </a>
-                              <button
-                                onClick={() => copyToClipboard(apiKey.customer_link!)}
-                                className="text-xs text-indigo-600 hover:text-indigo-500 underline"
-                              >
-                                Copy
-                              </button>
-                            </div>
-                          )}
-                          
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm font-medium text-gray-700">Credits:</span>
-                            {loadingCreditsInfo ? (
-                              <span className="text-sm text-gray-500">Loading...</span>
-                            ) : (
-                              <p className="text-sm text-green-700 font-medium">
-                                {getCreditsForApiKey(apiKey.api_key)} 💳
-                              </p>
-                            )}
-                          </div>
+                        <div className="flex items-center space-x-2 ml-4">
+                          <Button
+                            onClick={handleAddCredits}
+                            size="sm"
+                          >
+                            Add Credits
+                          </Button>
                         </div>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2 ml-4">
-                    <Button
-                      onClick={handleAddCredits}
-                      size="sm"
-                    >
-                      Add Credits
-                    </Button>
-                  </div>
+                  ))}
                 </div>
               </div>
-            ))}
+            )}
+
+            {/* InstantEmail API Keys Section */}
+            {instantEmailApiKeys.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Zap className="h-5 w-5 text-yellow-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">InstantEmail API Keys</h3>
+                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                    {instantEmailApiKeys.length} key{instantEmailApiKeys.length !== 1 ? 's' : ''}
+                  </Badge>
+                </div>
+                
+                <div className="space-y-4">
+                  {instantEmailApiKeys.map((apiKey) => (
+                    <div key={apiKey.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-4">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <span className="text-sm font-medium text-gray-900">{apiKey.user_email}</span>
+                                <span className="text-xs text-gray-500">
+                                  {new Date(apiKey.created_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-sm font-medium text-gray-700">API Key:</span>
+                                  <code className="text-sm bg-gray-100 px-2 py-1 rounded font-mono">
+                                    {maskApiKey(apiKey.api_key)}
+                                  </code>
+                                  <button
+                                    onClick={() => copyToClipboard(apiKey.api_key)}
+                                    className="text-xs text-indigo-600 hover:text-indigo-500 underline flex items-center gap-1"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                    Copy
+                                  </button>
+                                </div>
+                                
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-sm font-medium text-gray-700">Credits:</span>
+                                  <p className="text-sm text-green-700 font-medium flex items-center gap-1">
+                                    <CreditCard className="h-3 w-3" />
+                                    {apiKey.credits} 💳
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2 ml-4">
+                          <Button
+                            onClick={() => router.push('/buy-credits')}
+                            size="sm"
+                            variant="outline"
+                          >
+                            Buy Credits
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Generate New Keys Section */}
+            <div className="border-t pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900">Need more API keys?</h4>
+                  <p className="text-xs text-gray-500">Generate additional keys for different services</p>
+                </div>
+                <div className="space-x-2">
+                  <Button onClick={handleGenerateDeeepKey} size="sm" variant="outline">
+                    <Mail className="h-4 w-4 mr-1" />
+                    DEEEP Key
+                  </Button>
+                  <Button onClick={handleGenerateInstantEmailKey} size="sm" variant="outline">
+                    <Zap className="h-4 w-4 mr-1" />
+                    InstantEmail Key
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </CardContent>
