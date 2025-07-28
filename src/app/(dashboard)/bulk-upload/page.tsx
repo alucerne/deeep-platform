@@ -1,196 +1,211 @@
 'use client'
 
-import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import CsvUploader from "@/components/bulk-upload/csv-uploader"
-import InstantEmailUploader from "@/components/bulk-upload/instant-email-uploader"
-import UploadHistory from "@/components/bulk-upload/upload-history"
-import EmailActivityStats from "@/components/analytics/EmailActivityStats"
-import { useEmailStats } from "@/hooks/useEmailStats"
-import Spinner from "@/components/ui/spinner"
-import { Mail, Zap, BarChart3, AlertCircle, RefreshCw } from "lucide-react"
+import { useState, useEffect } from 'react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import CSVUploader from '@/components/bulk-upload/csv-uploader'
+import UploadHistory from '@/components/bulk-upload/upload-history'
+import InstantEmailUploader from '@/components/bulk-upload/instant-email-uploader'
+import EmailActivityStats from '@/components/analytics/EmailActivityStats'
+import { useEmailStats } from '@/hooks/useEmailStats'
+import { Spinner, BarChart3, AlertCircle, RefreshCw, ChevronDown } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { createClient } from '@supabase/supabase-js'
 
 export default function BulkUploadPage() {
-  const [activeTab, setActiveTab] = useState("deeep")
-  const [selectedRequestId, setSelectedRequestId] = useState("req_1753668661539_rsw24qic6")
+  const [selectedRequestId, setSelectedRequestId] = useState<string>('req_xyz')
+  const [availableRequestIds, setAvailableRequestIds] = useState<string[]>([])
+  const [loadingRequestIds, setLoadingRequestIds] = useState(false)
+  
   const { stats, loading, error, refetch } = useEmailStats(selectedRequestId)
 
+  // Fetch available request IDs from user's InstantEmail batches
+  const fetchAvailableRequestIds = async () => {
+    setLoadingRequestIds(true)
+    try {
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      )
+      
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user?.email) return
+
+      const { data: batches } = await supabase
+        .from('instant_email_batches')
+        .select('request_id')
+        .eq('user_email', session.user.email)
+        .eq('status', 'complete')
+        .order('submitted_at', { ascending: false })
+
+      if (batches) {
+        const requestIds = batches.map(batch => batch.request_id)
+        setAvailableRequestIds(requestIds)
+        
+        // Set the first available request ID as default if none selected
+        if (requestIds.length > 0 && !requestIds.includes(selectedRequestId)) {
+          setSelectedRequestId(requestIds[0])
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching request IDs:', error)
+    } finally {
+      setLoadingRequestIds(false)
+    }
+  }
+
+  // Load request IDs on component mount
+  useEffect(() => {
+    fetchAvailableRequestIds()
+  }, [])
+
   return (
-    <div className="space-y-6 p-6">
-      <div className="text-center max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold">Bulk Email Validation</h1>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Email Validation</h1>
         <p className="text-muted-foreground">
-          Choose your preferred email validation service and upload CSV files for batch processing.
+          Upload CSV files to validate email addresses using DEEEP or InstantEmail services.
         </p>
       </div>
 
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Service Selection Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="deeep" className="flex items-center gap-2">
-              <Mail className="h-4 w-4" />
-              DEEEP Validation
-            </TabsTrigger>
-            <TabsTrigger value="instantemail" className="flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              InstantEmail
-            </TabsTrigger>
-          </TabsList>
+      <Tabs defaultValue="deeep" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="deeep">DEEEP Validation</TabsTrigger>
+          <TabsTrigger value="instantemail">InstantEmail Validation</TabsTrigger>
+        </TabsList>
 
-          {/* DEEEP Validation Tab */}
-          <TabsContent value="deeep" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Mail className="h-5 w-5" />
-                  DEEEP Email Validation
-                </CardTitle>
-                <CardDescription>
-                  Upload CSV files for DEEEP email validation. Requires DEEEP API key and credits.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <CsvUploader />
-              </CardContent>
-            </Card>
-          </TabsContent>
+        <TabsContent value="deeep" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Batch Upload</CardTitle>
+              <CardDescription>
+                Upload a CSV file with email addresses for DEEEP validation.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CSVUploader />
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          {/* InstantEmail Tab */}
-          <TabsContent value="instantemail" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="h-5 w-5" />
-                  InstantEmail Validation
-                </CardTitle>
-                <CardDescription>
-                  Upload CSV files for InstantEmail validation. Requires InstantEmail API key and credits.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <InstantEmailUploader />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        <TabsContent value="instantemail" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Batch Upload</CardTitle>
+              <CardDescription>
+                Upload a CSV file with email addresses for InstantEmail validation.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <InstantEmailUploader />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
-        {/* Email Activity Statistics Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Email Activity Statistics
-            </CardTitle>
-            <CardDescription>
-              View detailed analytics and activity patterns for your email validation batches.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* Request ID Selector */}
-            <div className="mb-6">
-              <div className="flex items-end gap-3 max-w-md">
-                <div className="flex-1">
-                  <label htmlFor="requestId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Select Request ID
-                  </label>
-                  <input
-                    type="text"
-                    id="requestId"
-                    value={selectedRequestId}
-                    onChange={(e) => setSelectedRequestId(e.target.value)}
-                    placeholder="Enter request_id..."
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
-                  />
-                </div>
-                <Button
-                  onClick={refetch}
-                  disabled={loading}
+      {/* Email Activity Statistics */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="w-5 h-5" />
+            Email Activity Statistics
+          </CardTitle>
+          <CardDescription>
+            View detailed analytics for your email validation batches.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <label className="text-sm font-medium mb-2 block">Select Request ID</label>
+              <div className="flex gap-2">
+                <Select value={selectedRequestId} onValueChange={setSelectedRequestId}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select a request ID..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {loadingRequestIds ? (
+                      <SelectItem value="loading" disabled>
+                        <div className="flex items-center gap-2">
+                          <Spinner className="w-4 h-4 animate-spin" />
+                          Loading...
+                        </div>
+                      </SelectItem>
+                    ) : availableRequestIds.length > 0 ? (
+                      availableRequestIds.map((requestId) => (
+                        <SelectItem key={requestId} value={requestId}>
+                          {requestId}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>
+                        No completed batches found
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                <Button 
+                  onClick={fetchAvailableRequestIds} 
+                  variant="outline" 
                   size="sm"
-                  className="flex items-center gap-2"
+                  disabled={loadingRequestIds}
                 >
-                  {loading ? (
-                    <Spinner size="sm" />
+                  {loadingRequestIds ? (
+                    <Spinner className="w-4 h-4 animate-spin" />
                   ) : (
                     <RefreshCw className="w-4 h-4" />
                   )}
-                  Refresh
                 </Button>
               </div>
             </div>
+          </div>
 
-            {/* Stats Display */}
-            {loading && (
-              <div className="text-center py-12">
-                <Spinner size="lg" className="mb-4" />
-                <p className="text-gray-600 dark:text-gray-400">
-                  Loading email activity statistics...
-                </p>
-              </div>
-            )}
-
-            {error && !loading && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
-                  <h3 className="text-lg font-semibold text-red-800 dark:text-red-200">
-                    Error Loading Stats
-                  </h3>
-                </div>
-                <p className="text-red-700 dark:text-red-300 mb-4">
-                  {error}
-                </p>
-                <Button
-                  onClick={refetch}
-                  variant="destructive"
-                  size="sm"
-                  className="flex items-center gap-2"
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Spinner className="w-6 h-6 animate-spin" />
+              <span className="ml-2">Loading statistics...</span>
+            </div>
+          ) : error ? (
+            <div className="flex items-center gap-2 text-red-600 p-4 bg-red-50 rounded-lg">
+              <AlertCircle className="w-5 h-5" />
+              <div>
+                <p className="font-medium">Error loading statistics</p>
+                <p className="text-sm">{error}</p>
+                <Button 
+                  onClick={refetch} 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2"
                 >
-                  <RefreshCw className="w-4 h-4" />
                   Try Again
                 </Button>
               </div>
-            )}
-
-            {stats && !loading && !error && (
-              <div>
-                <div className="mb-4 text-center">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200 rounded-full text-sm">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="font-medium">
-                      Showing stats for: {stats.request_id}
-                    </span>
-                  </div>
-                </div>
-                <EmailActivityStats stats={stats} />
-              </div>
-            )}
-
-            {/* Help Text */}
-            <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <p className="text-sm text-blue-700 dark:text-blue-300">
-                <strong>Tip:</strong> Use a valid request ID from your upload history to view detailed activity statistics. 
-                The stats show email activity patterns across different time periods.
-              </p>
             </div>
-          </CardContent>
-        </Card>
+          ) : stats ? (
+            <EmailActivityStats stats={stats} />
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No statistics available for this request ID</p>
+              <p className="text-sm">Complete a batch to see analytics</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Upload History Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Upload History</CardTitle>
-            <CardDescription>
-              View your previous bulk uploads and download results from both services.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <UploadHistory />
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Upload History</CardTitle>
+          <CardDescription>
+            View all your email validation batches and download results.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <UploadHistory />
+        </CardContent>
+      </Card>
     </div>
   )
 } 
