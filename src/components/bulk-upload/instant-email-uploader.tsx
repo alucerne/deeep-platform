@@ -228,6 +228,7 @@ export default function InstantEmailUploader() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
         },
         body: JSON.stringify({
           api_key: selectedApiKey,
@@ -285,7 +286,7 @@ export default function InstantEmailUploader() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${selectedApiKey}`
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
         },
         body: JSON.stringify({
           request_id: requestIdToCheck

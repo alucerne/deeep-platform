@@ -58,11 +58,12 @@ export default function GenerateInstantEmailKey({ onApiKeyGenerated }: GenerateI
         return
       }
 
-      // Call InstantEmail generate-key Edge Function
+      // Call InstantEmail generate-key Edge Function with proper authorization
       const response = await fetch('https://hapmnlakorkoklzfovne.functions.supabase.co/generate-key', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
         },
         body: JSON.stringify({ 
           user_email: email.trim() 
