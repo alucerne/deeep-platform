@@ -61,7 +61,7 @@ serve(async (req) => {
   }
 
   try {
-    // Get API key from Authorization header
+    // Get API key or session token from Authorization header
     const authHeader = req.headers.get('Authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Authorization header with Bearer token required' }), {
@@ -73,28 +73,48 @@ serve(async (req) => {
       })
     }
 
-    const apiKey = authHeader.replace('Bearer ', '')
+    const token = authHeader.replace('Bearer ', '')
+    let user: any = null
 
-    // Look up user by API key
-    const { data: user, error: userError } = await supabase
+    // Try to authenticate as InstantEmail API user first
+    const { data: apiUser, error: apiUserError } = await supabase
       .from('api_users')
       .select('id, user_email')
-      .eq('api_key', apiKey)
+      .eq('api_key', token)
       .maybeSingle()
 
-    if (userError) {
-      console.error('Error looking up user:', userError)
-      return new Response(JSON.stringify({ error: 'Database error' }), {
-        status: 500,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
+    if (apiUserError) {
+      console.error('Error looking up API user:', apiUserError)
+    } else if (apiUser) {
+      user = apiUser
+    } else {
+      // If not an API key, try to authenticate as Supabase user
+      try {
+        const { data: { user: supabaseUser }, error: sessionError } = await supabase.auth.getUser(token)
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError)
+        } else if (supabaseUser) {
+          // Look up the InstantEmail user by email
+          const { data: emailUser, error: emailUserError } = await supabase
+            .from('api_users')
+            .select('id, user_email')
+            .eq('user_email', supabaseUser.email)
+            .maybeSingle()
+
+          if (emailUserError) {
+            console.error('Error looking up email user:', emailUserError)
+          } else if (emailUser) {
+            user = emailUser
+          }
         }
-      })
+      } catch (authError) {
+        console.error('Auth error:', authError)
+      }
     }
 
     if (!user) {
-      return new Response(JSON.stringify({ error: 'Invalid API key' }), {
+      return new Response(JSON.stringify({ error: 'Invalid API key or session token' }), {
         status: 401,
         headers: { 
           'Content-Type': 'application/json',

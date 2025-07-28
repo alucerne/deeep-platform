@@ -255,12 +255,18 @@ export default function UploadHistory() {
       const instantEmailJob = job as ProcessingInstantEmailJob
       if (instantEmailJob.status === 'complete') {
         try {
+          // Get the current session
+          const { data: { session } } = await supabase.auth.getSession()
+          if (!session) {
+            throw new Error('No active session')
+          }
+
           // Call get-results to get the CSV data
           const response = await fetch('https://hapmnlakorkoklzfovne.functions.supabase.co/get-results', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+              'Authorization': `Bearer ${session.access_token}`
             },
             body: JSON.stringify({
               request_id: instantEmailJob.request_id
@@ -282,9 +288,13 @@ export default function UploadHistory() {
               window.URL.revokeObjectURL(url)
               document.body.removeChild(a)
             }
+          } else {
+            const errorData = await response.json()
+            throw new Error(errorData.error || 'Failed to download results')
           }
         } catch (error) {
           console.error('Error downloading InstantEmail results:', error)
+          alert('Failed to download results. Please try again.')
         }
       }
     }
