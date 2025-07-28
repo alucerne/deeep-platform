@@ -150,7 +150,7 @@ serve(async (req) => {
       .from('instant_email_batches')
       .select('*')
       .eq('request_id', requestId)
-      .eq('api_user_id', user.id)
+      .eq('user_email', user.user_email)
       .maybeSingle()
 
     if (batchError) {

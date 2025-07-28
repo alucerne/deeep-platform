@@ -179,8 +179,8 @@ serve(async (req) => {
     const { data: batchData, error: batchError } = await supabase
       .from('instant_email_batches')
       .insert({
-        api_user_id: user.id,
         request_id: requestId,
+        user_email: user.user_email,
         submitted_emails: emails,
         status: 'processing'
       })
