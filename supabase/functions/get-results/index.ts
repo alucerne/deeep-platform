@@ -5,6 +5,37 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 const supabase = createClient(supabaseUrl, supabaseKey)
 
+interface EmailResult {
+  email: string
+  last_seen: string | null
+}
+
+/**
+ * Generate CSV content from email results
+ */
+function generateCSV(emailResults: EmailResult[]): string {
+  // CSV header
+  let csv = 'email,last_seen\n'
+  
+  // Add each email result
+  for (const result of emailResults) {
+    const email = result.email.replace(/"/g, '""') // Escape quotes
+    const lastSeen = result.last_seen ? result.last_seen.replace(/"/g, '""') : ''
+    
+    // Wrap in quotes if contains comma, newline, or quote
+    const needsQuotes = email.includes(',') || email.includes('\n') || email.includes('"') || 
+                       lastSeen.includes(',') || lastSeen.includes('\n') || lastSeen.includes('"')
+    
+    if (needsQuotes) {
+      csv += `"${email}","${lastSeen}"\n`
+    } else {
+      csv += `${email},${lastSeen}\n`
+    }
+  }
+  
+  return csv
+}
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -133,10 +164,47 @@ serve(async (req) => {
       message: ''
     }
 
-    // Add download_url if batch is complete
-    if (batch.status === 'complete' && batch.download_url) {
-      response.download_url = batch.download_url
+    // If batch is complete, fetch email results and provide CSV download
+    if (batch.status === 'complete') {
       response.message = 'Batch processing complete'
+      
+      // Add original download_url if available
+      if (batch.download_url) {
+        response.download_url = batch.download_url
+      }
+
+      // Fetch email results from instant_email_results table
+      const { data: emailResults, error: resultsError } = await supabase
+        .from('instant_email_results')
+        .select('email, last_seen')
+        .eq('request_id', requestId)
+        .order('email')
+
+      if (resultsError) {
+        console.error('Error fetching email results:', resultsError)
+        response.email_results_error = 'Failed to fetch email results'
+      } else {
+        // Add email results to response
+        response.email_results = emailResults || []
+        response.results_count = emailResults?.length || 0
+
+        // Generate CSV content
+        const csvContent = generateCSV(emailResults || [])
+        const csvBase64 = btoa(csvContent)
+        
+        // Add CSV download options
+        response.csv_download = {
+          base64: csvBase64,
+          filename: `email_results_${requestId}.csv`,
+          content_type: 'text/csv',
+          size_bytes: csvContent.length
+        }
+
+        // Add summary statistics
+        if (batch.summary) {
+          response.summary = batch.summary
+        }
+      }
     } else if (batch.status === 'failed') {
       response.message = 'Batch processing failed'
     } else {
