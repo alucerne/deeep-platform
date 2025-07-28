@@ -54,9 +54,9 @@ serve(async (req) => {
       })
     }
 
-    // Look up batch in email_batches table
+    // Look up batch in instant_email_batches table
     const { data: batch, error: batchError } = await supabase
-      .from('email_batches')
+      .from('instant_email_batches')
       .select('*')
       .eq('request_id', requestId)
       .maybeSingle()
@@ -142,7 +142,7 @@ serve(async (req) => {
     // Update database if status changed
     if (newStatus !== batch.status || downloadUrl !== batch.download_url) {
       const { error: updateError } = await supabase
-        .from('email_batches')
+        .from('instant_email_batches')
         .update({ 
           status: newStatus,
           download_url: downloadUrl

@@ -148,9 +148,9 @@ serve(async (req) => {
       })
     }
 
-    // Store batch metadata in email_batches table
+    // Store batch metadata in instant_email_batches table
     const { data: batchData, error: batchError } = await supabase
-      .from('email_batches')
+      .from('instant_email_batches')
       .insert({
         api_user_id: user.id,
         request_id: requestId,
