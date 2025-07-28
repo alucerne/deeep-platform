@@ -61,7 +61,7 @@ serve(async (req) => {
   }
 
   try {
-    // Get API key or session token from Authorization header
+    // Get session token from Authorization header
     const authHeader = req.headers.get('Authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Authorization header with Bearer token required' }), {
@@ -74,19 +74,19 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '')
-    let user: any = null
+    let userEmail: string | null = null
 
     // Try to authenticate as InstantEmail API user first
     const { data: apiUser, error: apiUserError } = await supabase
       .from('api_users')
-      .select('id, user_email')
+      .select('user_email')
       .eq('api_key', token)
       .maybeSingle()
 
     if (apiUserError) {
       console.error('Error looking up API user:', apiUserError)
     } else if (apiUser) {
-      user = apiUser
+      userEmail = apiUser.user_email
     } else {
       // If not an API key, try to authenticate as Supabase user
       try {
@@ -94,26 +94,15 @@ serve(async (req) => {
         
         if (sessionError) {
           console.error('Session error:', sessionError)
-        } else if (supabaseUser) {
-          // Look up the InstantEmail user by email
-          const { data: emailUser, error: emailUserError } = await supabase
-            .from('api_users')
-            .select('id, user_email')
-            .eq('user_email', supabaseUser.email)
-            .maybeSingle()
-
-          if (emailUserError) {
-            console.error('Error looking up email user:', emailUserError)
-          } else if (emailUser) {
-            user = emailUser
-          }
+        } else if (supabaseUser?.email) {
+          userEmail = supabaseUser.email
         }
       } catch (authError) {
         console.error('Auth error:', authError)
       }
     }
 
-    if (!user) {
+    if (!userEmail) {
       return new Response(JSON.stringify({ error: 'Invalid API key or session token' }), {
         status: 401,
         headers: { 
@@ -150,7 +139,7 @@ serve(async (req) => {
       .from('instant_email_batches')
       .select('*')
       .eq('request_id', requestId)
-      .eq('user_email', user.user_email)
+      .eq('user_email', userEmail)
       .maybeSingle()
 
     if (batchError) {
