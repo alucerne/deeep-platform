@@ -119,7 +119,7 @@ serve(async (req) => {
     }
 
     // Generate webhook URL for this batch
-    const webhookUrl = `${supabaseUrl.replace('.supabase.co', '.functions.supabase.co')}/email-webhook`
+    const webhookUrl = 'https://hapmnlakorkoklzfovne.functions.supabase.co/email-webhook'
 
     // Generate a unique request ID
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -210,42 +210,40 @@ serve(async (req) => {
       // Note: We don't fail here since the batch was already submitted
     }
 
-    // Simulate webhook call after a short delay (for demo purposes)
+    // Simulate webhook call immediately (for demo purposes)
     if (SIMULATE_INSTANT_EMAIL_API) {
-      setTimeout(async () => {
-        try {
-          // Simulate webhook call to mark batch as complete
-          const webhookPayload = {
-            request_id: requestId,
-            download_url: `https://example.com/results/${requestId}.csv`,
-            summary: {
-              total_emails: emails.length,
-              valid_emails: Math.floor(emails.length * 0.85), // Simulate 85% valid
-              invalid_emails: Math.floor(emails.length * 0.15), // Simulate 15% invalid
-              processing_time_seconds: Math.floor(emails.length * 0.1) // 0.1 seconds per email
-            }
+      try {
+        // Simulate webhook call to mark batch as complete
+        const webhookPayload = {
+          request_id: requestId,
+          download_url: `https://example.com/results/${requestId}.csv`,
+          summary: {
+            total_emails: emails.length,
+            valid_emails: Math.floor(emails.length * 0.85), // Simulate 85% valid
+            invalid_emails: Math.floor(emails.length * 0.15), // Simulate 15% invalid
+            processing_time_seconds: Math.floor(emails.length * 0.1) // 0.1 seconds per email
           }
-
-          console.log('Simulating webhook call:', webhookPayload)
-
-          // Call our own webhook function
-          const webhookResponse = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(webhookPayload)
-          })
-
-          if (webhookResponse.ok) {
-            console.log('Webhook simulation successful')
-          } else {
-            console.error('Webhook simulation failed:', await webhookResponse.text())
-          }
-        } catch (error) {
-          console.error('Error in webhook simulation:', error)
         }
-      }, 5000) // 5 second delay for demo
+
+        console.log('Simulating webhook call:', webhookPayload)
+
+        // Call our own webhook function
+        const webhookResponse = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(webhookPayload)
+        })
+
+        if (webhookResponse.ok) {
+          console.log('Webhook simulation successful')
+        } else {
+          console.error('Webhook simulation failed:', await webhookResponse.text())
+        }
+      } catch (error) {
+        console.error('Error in webhook simulation:', error)
+      }
     }
 
     // Return success response
