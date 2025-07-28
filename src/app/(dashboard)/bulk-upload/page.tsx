@@ -8,7 +8,7 @@ import UploadHistory from '@/components/bulk-upload/upload-history'
 import InstantEmailUploader from '@/components/bulk-upload/instant-email-uploader'
 import EmailActivityStats from '@/components/analytics/EmailActivityStats'
 import { useEmailStats } from '@/hooks/useEmailStats'
-import { Spinner, BarChart3, AlertCircle, RefreshCw, ChevronDown } from 'lucide-react'
+import { Loader2, BarChart3, AlertCircle, RefreshCw, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -129,7 +129,7 @@ export default function BulkUploadPage() {
                     {loadingRequestIds ? (
                       <SelectItem value="loading" disabled>
                         <div className="flex items-center gap-2">
-                          <Spinner className="w-4 h-4 animate-spin" />
+                          <Loader2 className="w-4 h-4 animate-spin" />
                           Loading...
                         </div>
                       </SelectItem>
@@ -153,7 +153,7 @@ export default function BulkUploadPage() {
                   disabled={loadingRequestIds}
                 >
                   {loadingRequestIds ? (
-                    <Spinner className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <RefreshCw className="w-4 h-4" />
                   )}
@@ -164,7 +164,7 @@ export default function BulkUploadPage() {
 
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <Spinner className="w-6 h-6 animate-spin" />
+              <Loader2 className="w-6 h-6 animate-spin" />
               <span className="ml-2">Loading statistics...</span>
             </div>
           ) : error ? (
