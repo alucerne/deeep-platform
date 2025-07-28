@@ -5,8 +5,6 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-const ADMIN_SECRET = Deno.env.get("SUPABASE_ADMIN_SECRET")
-
 serve(async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -14,14 +12,14 @@ serve(async (req) => {
       status: 200,
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       },
     })
   }
 
-  // Only allow POST requests
-  if (req.method !== 'POST') {
+  // Only allow GET and POST requests
+  if (req.method !== 'GET' && req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
       headers: { 
@@ -32,7 +30,7 @@ serve(async (req) => {
   }
 
   try {
-    // Check admin authentication
+    // Get API key from Authorization header
     const authHeader = req.headers.get('Authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Authorization header with Bearer token required' }), {
@@ -44,49 +42,13 @@ serve(async (req) => {
       })
     }
 
-    const providedSecret = authHeader.replace('Bearer ', '')
-    
-    // Verify admin secret
-    if (!ADMIN_SECRET || providedSecret !== ADMIN_SECRET) {
-      return new Response(JSON.stringify({ error: 'Admin access denied' }), {
-        status: 403,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
-      })
-    }
+    const apiKey = authHeader.replace('Bearer ', '')
 
-    // Parse request body
-    const body = await req.json()
-    const { user_email, credits } = body
-
-    // Validate input
-    if (!user_email || typeof user_email !== 'string') {
-      return new Response(JSON.stringify({ error: 'user_email is required and must be a string' }), {
-        status: 400,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
-      })
-    }
-
-    if (typeof credits !== 'number' || credits < 0) {
-      return new Response(JSON.stringify({ error: 'credits must be a non-negative number' }), {
-        status: 400,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
-      })
-    }
-
-    // Look up user
+    // Look up user by API key
     const { data: user, error: userError } = await supabase
       .from('api_users')
-      .select('id, user_email, credits')
-      .eq('user_email', user_email)
+      .select('id, user_email')
+      .eq('api_key', apiKey)
       .maybeSingle()
 
     if (userError) {
@@ -101,8 +63,8 @@ serve(async (req) => {
     }
 
     if (!user) {
-      return new Response(JSON.stringify({ error: 'User not found' }), {
-        status: 404,
+      return new Response(JSON.stringify({ error: 'Invalid API key' }), {
+        status: 401,
         headers: { 
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*'
@@ -110,20 +72,39 @@ serve(async (req) => {
       })
     }
 
-    // Calculate new credit balance
-    const newCredits = user.credits + credits
+    // Parse request_id from query params or body
+    let requestId: string
 
-    // Update user credits
-    const { data: updatedUser, error: updateError } = await supabase
-      .from('api_users')
-      .update({ credits: newCredits })
-      .eq('id', user.id)
-      .select('user_email, credits')
-      .single()
+    if (req.method === 'GET') {
+      const url = new URL(req.url)
+      requestId = url.searchParams.get('request_id') || ''
+    } else {
+      const body = await req.json()
+      requestId = body.request_id || ''
+    }
 
-    if (updateError) {
-      console.error('Error updating credits:', updateError)
-      return new Response(JSON.stringify({ error: 'Failed to update credits' }), {
+    // Validate request_id
+    if (!requestId) {
+      return new Response(JSON.stringify({ error: 'request_id is required' }), {
+        status: 400,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
+
+    // Look up batch and confirm it belongs to the user
+    const { data: batch, error: batchError } = await supabase
+      .from('instant_email_batches')
+      .select('*')
+      .eq('request_id', requestId)
+      .eq('api_user_id', user.id)
+      .maybeSingle()
+
+    if (batchError) {
+      console.error('Error looking up batch:', batchError)
+      return new Response(JSON.stringify({ error: 'Database error' }), {
         status: 500,
         headers: { 
           'Content-Type': 'application/json',
@@ -132,14 +113,38 @@ serve(async (req) => {
       })
     }
 
-    // Return success response
-    return new Response(JSON.stringify({
-      user_email: updatedUser.user_email,
-      previous_credits: user.credits,
-      credits_added: credits,
-      new_balance: updatedUser.credits,
-      message: 'Credits updated successfully'
-    }), {
+    if (!batch) {
+      return new Response(JSON.stringify({ error: 'Batch not found or access denied' }), {
+        status: 404,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
+
+    // Prepare response based on batch status
+    const response: any = {
+      request_id: batch.request_id,
+      status: batch.status,
+      submitted_emails: batch.submitted_emails,
+      emails_count: batch.submitted_emails?.length || 0,
+      created_at: batch.created_at,
+      message: ''
+    }
+
+    // Add download_url if batch is complete
+    if (batch.status === 'complete' && batch.download_url) {
+      response.download_url = batch.download_url
+      response.message = 'Batch processing complete'
+    } else if (batch.status === 'failed') {
+      response.message = 'Batch processing failed'
+    } else {
+      response.message = 'Batch still processing'
+    }
+
+    // Return the response
+    return new Response(JSON.stringify(response), {
       status: 200,
       headers: { 
         'Content-Type': 'application/json',
